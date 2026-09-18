@@ -59,7 +59,7 @@
         </nav>
 
         <div class="mt-auto space-y-1">
-            <a x-on:click="open = false" href="{{ $driver ? route('profile.show', $driver) : route('profile') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
+            <a x-on:click="open = false" href="{{ $driver ? route('drivers.show', $driver) : route('profile') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
                 <x-lucide-circle-user-round class="size-[18px]" />Profile
             </a>
             <a x-on:click="open = false" href="{{ route('settings') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">

@@ -33,10 +33,13 @@ Route::middleware('auth')->group(function () {
         $driver = auth()->user()?->driver;
 
         return $driver
-            ? redirect()->route('profile.show', $driver)
+            ? redirect()->route('drivers.show', $driver)
             : redirect()->route('dashboard');
     })->name('profile');
-    Route::get('/drivers/{driver}', [DriverController::class, 'show'])->name('profile.show');
+    Route::get('/drivers', [DriverController::class, 'index'])->name('drivers');
+    Route::get('/drivers/{driver}', [DriverController::class, 'show'])->name('drivers.show');
+    Route::get('/drivers/{driver}/edit', [DriverController::class, 'edit'])->name('drivers.edit');
+    Route::patch('/drivers/{driver}', [DriverController::class, 'update'])->name('drivers.update');
 
     Route::get('/races/new', fn () => abort(501))->name('races.new');
     Route::get('/races/{race}', fn () => abort(501))->name('races.show');

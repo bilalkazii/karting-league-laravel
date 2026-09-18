@@ -23,7 +23,7 @@
 @endphp
 
 <div class="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 transition hover:bg-[var(--panel-raised)]">
-    <a href="{{ route('profile.show', $member) }}" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--red)]">
+    <a href="{{ route('drivers.show', $member) }}" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--red)]">
         <x-driver-avatar
             :color="$member->avatar_color"
             :text-color="$member->avatar_text_color"

@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Driver;
 use App\Models\Group;
+use App\Policies\DriverPolicy;
 use App\Policies\GroupPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -15,6 +17,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Group::class => GroupPolicy::class,
+        Driver::class => DriverPolicy::class,
     ];
 
     public function boot(): void
