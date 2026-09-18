@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SeasonController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -23,7 +24,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/groups/{group}/availability', [GroupController::class, 'updateAvailability'])->name('groups.availability.update');
 
     Route::view('/races', 'feature-placeholder')->name('races');
-    Route::view('/championship', 'feature-placeholder')->name('championship');
+    Route::get('/championship', [SeasonController::class, 'index'])->name('championship');
+    Route::get('/championship/{season}', [SeasonController::class, 'show'])->name('championship.show');
+    Route::get('/seasons', [SeasonController::class, 'index'])->name('seasons');
+    Route::get('/seasons/new', [SeasonController::class, 'create'])->name('seasons.new');
+    Route::post('/seasons', [SeasonController::class, 'store'])->name('seasons.store');
+    Route::get('/seasons/{season}', [SeasonController::class, 'show'])->name('seasons.show');
+    Route::get('/seasons/{season}/edit', [SeasonController::class, 'edit'])->name('seasons.edit');
+    Route::patch('/seasons/{season}', [SeasonController::class, 'update'])->name('seasons.update');
+    Route::delete('/seasons/{season}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
     Route::view('/chat', 'feature-placeholder')->name('chat');
     Route::view('/notifications', 'feature-placeholder')->name('notifications');
     Route::view('/settings', 'feature-placeholder')->name('settings');
