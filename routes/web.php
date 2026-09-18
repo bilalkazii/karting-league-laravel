@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\GroupController;
@@ -64,7 +65,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
-    Route::view('/chat', 'feature-placeholder')->name('chat');
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
+    Route::get('/chat/groups/{group}', [ChatController::class, 'group'])->name('chat.group');
+    Route::post('/chat/groups/{group}', [ChatController::class, 'storeGroup'])->name('chat.group.send');
+    Route::get('/chat/races/{race}', [ChatController::class, 'race'])->name('chat.race');
+    Route::post('/chat/races/{race}', [ChatController::class, 'storeRace'])->name('chat.race.send');
+    Route::delete('/chat/messages/{message}', [ChatController::class, 'destroy'])->name('chat.messages.destroy');
     Route::view('/settings', 'feature-placeholder')->name('settings');
     Route::view('/race-setup', 'feature-placeholder')->name('race-setup');
 

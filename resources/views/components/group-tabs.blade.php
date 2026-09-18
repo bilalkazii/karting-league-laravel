@@ -6,6 +6,7 @@
     $tabs = [
         ['label' => 'Overview', 'route' => 'groups.show', 'groupScoped' => true],
         ['label' => 'Members', 'route' => 'groups.members', 'groupScoped' => true],
+        ['label' => 'Chat', 'route' => 'chat.group', 'groupScoped' => true],
         ['label' => 'Races', 'route' => 'races', 'groupScoped' => false],
         ['label' => 'Championship', 'route' => 'championship', 'groupScoped' => false],
         ['label' => 'Drivers', 'route' => 'drivers', 'groupScoped' => false],

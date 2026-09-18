@@ -55,6 +55,9 @@
                     <x-button type="button" variant="ghost"><x-lucide-pencil class="size-3.5" />Edit</x-button>
                 </a>
             @endif
+            <a href="{{ route('chat.race', $race) }}">
+                <x-button type="button" variant="ghost"><x-lucide-message-square class="size-3.5" />Race chat</x-button>
+            </a>
             <x-badge class="border-white/10 bg-white/5 font-mono text-[10px] text-[var(--muted)]">
                 {{ $race->date->format('d M Y') }} · {{ $race->start_time }}
             </x-badge>

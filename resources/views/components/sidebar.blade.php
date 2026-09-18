@@ -1,12 +1,14 @@
 @props(['driver' => null, 'groups' => []])
 
 @php
+    $chatUnread = $driver ? app(\App\Services\ChatService::class)->unreadForDriver($driver) : 0;
     $navigation = [
         ['label' => 'Dashboard', 'href' => 'dashboard', 'icon' => 'home'],
         ['label' => 'My groups', 'href' => 'groups', 'icon' => 'users'],
         ['label' => 'Races', 'href' => 'races', 'icon' => 'flag'],
         ['label' => 'Championship', 'href' => 'championship', 'icon' => 'trophy'],
         ['label' => 'Drivers', 'href' => 'drivers', 'icon' => 'gauge'],
+        ['label' => 'Chat', 'href' => 'chat', 'icon' => 'message-square'],
     ];
     $current = request()->route()?->getName();
 @endphp
@@ -51,6 +53,9 @@
                 >
                     <x-dynamic-component :component="'lucide-'.$item['icon']" :class="'size-[18px] '.($active ? 'text-[var(--red-bright)]' : '')" />
                     <span>{{ $item['label'] }}</span>
+                    @if ($item['href'] === 'chat' && $chatUnread > 0)
+                        <span class="ml-auto rounded-full bg-[var(--red)] px-1.5 py-0.5 text-[9px] font-bold text-white">{{ $chatUnread }}</span>
+                    @endif
                 </a>
             @endforeach
         </nav>

@@ -5,6 +5,7 @@
         ['label' => 'Races', 'href' => 'races', 'icon' => 'flag'],
         ['label' => 'Championship', 'href' => 'championship', 'icon' => 'trophy'],
         ['label' => 'Drivers', 'href' => 'drivers', 'icon' => 'gauge'],
+        ['label' => 'Chat', 'href' => 'chat', 'icon' => 'message-square'],
     ];
     $current = request()->route()?->getName();
 @endphp

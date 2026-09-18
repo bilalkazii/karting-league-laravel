@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Driver extends Model
 {
@@ -82,6 +81,16 @@ class Driver extends Model
     public function raceEvents(): HasMany
     {
         return $this->hasMany(RaceEvent::class);
+    }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class, 'sender_id');
+    }
+
+    public function chatLastReads(): HasMany
+    {
+        return $this->hasMany(ChatLastRead::class);
     }
 
     public function getDisplayNameAttribute(): string

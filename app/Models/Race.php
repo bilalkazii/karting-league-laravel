@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\RaceFormat;
+use App\Enums\RaceStatus;
 use Database\Factories\RaceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -33,8 +35,8 @@ class Race extends Model
         return [
             'date' => 'date',
             'start_time' => 'string',
-            'format' => \App\Enums\RaceFormat::class,
-            'status' => \App\Enums\RaceStatus::class,
+            'format' => RaceFormat::class,
+            'status' => RaceStatus::class,
             'qualifying_lap_count' => 'integer',
         ];
     }
@@ -91,5 +93,10 @@ class Race extends Model
     {
         return $this->belongsToMany(Season::class, 'season_races')
             ->withPivot('round_number');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
     }
 }

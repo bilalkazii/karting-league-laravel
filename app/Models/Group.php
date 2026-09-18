@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\GroupPrivacy;
 use Database\Factories\GroupFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,7 +29,7 @@ class Group extends Model
     protected function casts(): array
     {
         return [
-            'privacy' => \App\Enums\GroupPrivacy::class,
+            'privacy' => GroupPrivacy::class,
         ];
     }
 
@@ -61,5 +62,10 @@ class Group extends Model
     public function seasons(): HasMany
     {
         return $this->hasMany(Season::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
     }
 }
