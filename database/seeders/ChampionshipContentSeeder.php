@@ -95,10 +95,10 @@ class ChampionshipContentSeeder extends Seeder
 
         $raceModel = [];
         foreach ($races as $r) {
-            $raceModel[$r['key']] = Race::firstOrCreate(
-                ['name' => $r['name'], 'date' => $r['date']],
+            $raceModel[$r['key']] = Race::updateOrCreate(
+                ['name' => $r['name'], 'group_id' => $group->id],
                 [
-                    'group_id' => $group->id,
+                    'date' => $r['date'],
                     'venue_name' => $r['venue_name'],
                     'start_time' => $r['start_time'],
                     'format' => $r['format'],

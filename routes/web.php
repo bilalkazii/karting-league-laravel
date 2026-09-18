@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
+use App\Http\Controllers\GroupController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,7 +15,13 @@ Route::get('/dashboard', DashboardController::class)
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::view('/groups', 'feature-placeholder')->name('groups');
+    Route::get('/groups', [GroupController::class, 'index'])->name('groups');
+    Route::get('/groups/new', [GroupController::class, 'create'])->name('groups.new');
+    Route::post('/groups', [GroupController::class, 'store'])->name('groups.store');
+    Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
+    Route::get('/groups/{group}/members', [GroupController::class, 'members'])->name('groups.members');
+    Route::post('/groups/{group}/availability', [GroupController::class, 'updateAvailability'])->name('groups.availability.update');
+
     Route::view('/races', 'feature-placeholder')->name('races');
     Route::view('/championship', 'feature-placeholder')->name('championship');
     Route::view('/chat', 'feature-placeholder')->name('chat');
@@ -31,8 +38,6 @@ Route::middleware('auth')->group(function () {
     })->name('profile');
     Route::get('/drivers/{driver}', [DriverController::class, 'show'])->name('profile.show');
 
-    Route::get('/groups/new', fn () => abort(501))->name('groups.new');
-    Route::get('/groups/{group}', fn () => abort(501))->name('groups.show');
     Route::get('/races/new', fn () => abort(501))->name('races.new');
     Route::get('/races/{race}', fn () => abort(501))->name('races.show');
 

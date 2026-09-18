@@ -38,3 +38,8 @@
         -webkit-font-smoothing: antialiased;
     }
 }
+
+.carbon {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .008)),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 5px);
+}
