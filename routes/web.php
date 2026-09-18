@@ -4,6 +4,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RaceController;
+use App\Http\Controllers\RaceSessionController;
 use App\Http\Controllers\SeasonController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +25,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/groups/{group}/members', [GroupController::class, 'members'])->name('groups.members');
     Route::post('/groups/{group}/availability', [GroupController::class, 'updateAvailability'])->name('groups.availability.update');
 
-    Route::view('/races', 'feature-placeholder')->name('races');
+    Route::get('/races', [RaceController::class, 'index'])->name('races');
+    Route::get('/races/new', [RaceController::class, 'create'])->name('races.new');
+    Route::post('/races', [RaceController::class, 'store'])->name('races.store');
+    Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
+    Route::get('/races/{race}/edit', [RaceController::class, 'edit'])->name('races.edit');
+    Route::patch('/races/{race}', [RaceController::class, 'update'])->name('races.update');
+    Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
+
+    Route::post('/races/{race}/lobby', [RaceSessionController::class, 'openLobby'])->name('races.lobby.open');
+    Route::post('/races/{race}/qualifying/start', [RaceSessionController::class, 'startQualifying'])->name('races.qualifying.start');
+    Route::post('/races/{race}/qualifying', [RaceSessionController::class, 'recordQualifying'])->name('races.qualifying.record');
+    Route::post('/races/{race}/lock-grid', [RaceSessionController::class, 'lockGrid'])->name('races.lock-grid');
+    Route::post('/races/{race}/entries', [RaceSessionController::class, 'setParticipants'])->name('races.entries.set');
+    Route::post('/races/{race}/entries/{driver}', [RaceSessionController::class, 'updateEntry'])->name('races.entries.update');
+    Route::post('/races/{race}/entries/{driver}/ready', [RaceSessionController::class, 'toggleReady'])->name('races.entries.ready');
+    Route::delete('/races/{race}/entries/{driver}', [RaceSessionController::class, 'removeEntry'])->name('races.entries.remove');
+    Route::post('/races/{race}/drivers/{driver}/status', [RaceSessionController::class, 'setDriverStatus'])->name('races.driver-status');
+    Route::post('/races/{race}/start', [RaceSessionController::class, 'startRace'])->name('races.start');
+    Route::post('/races/{race}/complete', [RaceSessionController::class, 'completeRace'])->name('races.complete');
+    Route::post('/races/{race}/cancel', [RaceSessionController::class, 'cancelRace'])->name('races.cancel');
+    Route::post('/races/{race}/penalties', [RaceSessionController::class, 'issuePenalty'])->name('races.penalties.store');
+    Route::post('/races/{race}/penalties/{penalty}/cancel', [RaceSessionController::class, 'cancelPenalty'])->name('races.penalties.cancel');
+
     Route::get('/championship', [SeasonController::class, 'index'])->name('championship');
     Route::get('/championship/{season}', [SeasonController::class, 'show'])->name('championship.show');
     Route::get('/seasons', [SeasonController::class, 'index'])->name('seasons');
@@ -49,9 +73,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/drivers/{driver}', [DriverController::class, 'show'])->name('drivers.show');
     Route::get('/drivers/{driver}/edit', [DriverController::class, 'edit'])->name('drivers.edit');
     Route::patch('/drivers/{driver}', [DriverController::class, 'update'])->name('drivers.update');
-
-    Route::get('/races/new', fn () => abort(501))->name('races.new');
-    Route::get('/races/{race}', fn () => abort(501))->name('races.show');
 
     Route::get('/account', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/account', [ProfileController::class, 'update'])->name('profile.update');

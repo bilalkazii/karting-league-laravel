@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\QualifyingStatus;
+use App\Enums\RaceDriverStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,6 +15,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RaceEntry extends Model
 {
     public $timestamps = false;
+
+    public $incrementing = false;
+
+    protected $primaryKey = 'race_id';
+
+    public function getKey(): mixed
+    {
+        return $this->getAttribute('race_id').':'.$this->getAttribute('driver_id');
+    }
+
+    protected function setKeysForSaveQuery($query): Builder
+    {
+        $query->where('race_id', $this->getOriginal('race_id'))
+            ->where('driver_id', $this->getOriginal('driver_id'));
+
+        return $query;
+    }
 
     protected $fillable = [
         'race_id',
@@ -32,14 +52,14 @@ class RaceEntry extends Model
     protected function casts(): array
     {
         return [
-            'status' => \App\Enums\RaceDriverStatus::class,
+            'status' => RaceDriverStatus::class,
             'confirmed' => 'boolean',
             'ready' => 'boolean',
             'kart_number' => 'integer',
             'grid_position' => 'integer',
             'grid_penalty_seconds' => 'integer',
             'qualifying_time_ms' => 'integer',
-            'qualifying_status' => \App\Enums\QualifyingStatus::class,
+            'qualifying_status' => QualifyingStatus::class,
             'finish_position' => 'integer',
             'penalty_total_seconds' => 'integer',
         ];
