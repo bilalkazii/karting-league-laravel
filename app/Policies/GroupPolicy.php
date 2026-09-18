@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\GroupRole;
 use App\Models\Group;
 use App\Models\User;
 
@@ -32,5 +33,12 @@ class GroupPolicy
     public function manageMembers(User $user, Group $group): bool
     {
         return $this->update($user, $group);
+    }
+
+    public function manageRoles(User $user, Group $group): bool
+    {
+        $pivot = $user->driver?->groups()->where('group_id', $group->id)->first()?->pivot;
+
+        return $pivot && $pivot->role === GroupRole::Admin->value;
     }
 }

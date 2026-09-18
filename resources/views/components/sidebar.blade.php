@@ -6,7 +6,7 @@
         ['label' => 'My groups', 'href' => 'groups', 'icon' => 'users'],
         ['label' => 'Races', 'href' => 'races', 'icon' => 'flag'],
         ['label' => 'Championship', 'href' => 'championship', 'icon' => 'trophy'],
-        ['label' => 'Chat', 'href' => 'chat', 'icon' => 'message-square'],
+        ['label' => 'Drivers', 'href' => 'drivers', 'icon' => 'gauge'],
     ];
     $current = request()->route()?->getName();
 @endphp
@@ -51,9 +51,6 @@
                 >
                     <x-dynamic-component :component="'lucide-'.$item['icon']" :class="'size-[18px] '.($active ? 'text-[var(--red-bright)]' : '')" />
                     <span>{{ $item['label'] }}</span>
-                    @if ($item['label'] === 'Chat')
-                        <span class="ml-auto rounded-full bg-[var(--red)] px-1.5 py-0.5 text-[9px] text-white">3</span>
-                    @endif
                 </a>
             @endforeach
         </nav>
@@ -62,8 +59,8 @@
             <a x-on:click="open = false" href="{{ $driver ? route('drivers.show', $driver) : route('profile') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
                 <x-lucide-circle-user-round class="size-[18px]" />Profile
             </a>
-            <a x-on:click="open = false" href="{{ route('settings') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
-                <x-lucide-settings class="size-[18px]" />Settings
+            <a x-on:click="open = false" href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
+                <x-lucide-settings class="size-[18px]" />Account
             </a>
             @if ($driver)
                 <div class="mt-5 flex items-center gap-3 border-t border-[var(--line)] px-3 pt-5">

@@ -8,8 +8,7 @@
         ['label' => 'Members', 'route' => 'groups.members', 'groupScoped' => true],
         ['label' => 'Races', 'route' => 'races', 'groupScoped' => false],
         ['label' => 'Championship', 'route' => 'championship', 'groupScoped' => false],
-        ['label' => 'Chat', 'route' => 'chat', 'groupScoped' => false],
-        ['label' => 'Settings', 'route' => 'settings', 'groupScoped' => false],
+        ['label' => 'Drivers', 'route' => 'drivers', 'groupScoped' => false],
     ];
 @endphp
 

@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\DriverAvailability;
-use App\Enums\GroupRole;
 use App\Enums\GroupPrivacy;
+use App\Enums\GroupRole;
 use App\Enums\RaceStatus;
 use App\Enums\SeasonStatus;
 use App\Http\Requests\CreateGroupRequest;
+use App\Models\Driver;
 use App\Models\Group;
 use App\Models\Race;
 use App\Models\Season;
@@ -19,6 +20,7 @@ use Illuminate\Validation\Rule;
 class GroupController extends Controller
 {
     use AuthorizesRequests;
+
     public function index()
     {
         $driver = auth()->user()?->driver;
@@ -163,8 +165,84 @@ class GroupController extends Controller
                 GroupRole::Admin->value,
                 GroupRole::Organizer->value,
             ], true);
+        $canManageRoles = $currentUserMember?->pivot?->role === GroupRole::Admin->value;
 
-        return view('groups.members', compact('group', 'members', 'memberCount', 'isOrganizer'));
+        $availableDrivers = Driver::whereNotIn('id', $members->pluck('id'))
+            ->orderBy('nickname')
+            ->get();
+
+        return view('groups.members', compact(
+            'group',
+            'members',
+            'memberCount',
+            'isOrganizer',
+            'canManageRoles',
+            'availableDrivers'
+        ));
+    }
+
+    public function addMember(Request $request, Group $group)
+    {
+        $this->authorize('manageMembers', $group);
+
+        $validated = $request->validate([
+            'driver_id' => ['required', 'integer', Rule::exists('drivers', 'id')],
+        ]);
+
+        abort_if(
+            $group->members()->where('drivers.id', $validated['driver_id'])->exists(),
+            422,
+            'That driver is already a member.'
+        );
+
+        $group->members()->attach($validated['driver_id'], [
+            'role' => GroupRole::Member->value,
+            'availability' => DriverAvailability::Available->value,
+            'joined_at' => now(),
+        ]);
+
+        return redirect()->route('groups.members', $group);
+    }
+
+    public function updateMemberRole(Request $request, Group $group, Driver $driver)
+    {
+        $this->authorize('manageRoles', $group);
+
+        $validated = $request->validate([
+            'role' => ['required', Rule::in(array_column(GroupRole::cases(), 'value'))],
+        ]);
+
+        $target = $group->members()->where('drivers.id', $driver->id)->first();
+        abort_unless($target !== null, 404);
+
+        $newRole = $validated['role'];
+        $currentRole = $target->pivot->role;
+        $adminCount = $group->members()->wherePivot('role', GroupRole::Admin->value)->count();
+
+        if ($currentRole === GroupRole::Admin->value && $newRole !== GroupRole::Admin->value && $adminCount <= 1) {
+            abort(422, 'A group must always keep at least one admin.');
+        }
+
+        $group->members()->updateExistingPivot($driver->id, ['role' => $newRole]);
+
+        return redirect()->route('groups.members', $group);
+    }
+
+    public function removeMember(Group $group, Driver $driver)
+    {
+        $this->authorize('manageMembers', $group);
+
+        $target = $group->members()->where('drivers.id', $driver->id)->first();
+        abort_unless($target !== null, 404);
+
+        if ($target->pivot->role === GroupRole::Admin->value
+            && $group->members()->wherePivot('role', GroupRole::Admin->value)->count() <= 1) {
+            abort(422, 'A group must always keep at least one admin.');
+        }
+
+        $group->members()->detach($driver->id);
+
+        return redirect()->route('groups.members', $group);
     }
 
     public function updateAvailability(Group $group, Request $request)

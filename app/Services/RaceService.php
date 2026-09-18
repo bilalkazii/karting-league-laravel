@@ -6,12 +6,17 @@ use App\Enums\QualifyingStatus;
 use App\Enums\RaceDriverStatus;
 use App\Enums\RaceEventType;
 use App\Enums\RaceStatus;
+use App\Models\Driver;
 use App\Models\Group;
 use App\Models\QualifyingAttempt;
 use App\Models\Race;
 use App\Models\RaceEntry;
 use App\Models\RaceEvent;
 use App\Models\RacePenalty;
+use App\Models\User;
+use App\Notifications\PenaltyIssued;
+use App\Notifications\RaceCompleted;
+use App\Notifications\RaceOpened;
 use App\Support\RaceUtils;
 use Illuminate\Support\Collection;
 
@@ -224,6 +229,7 @@ class RaceService
             RaceDriverStatus::Withdrawn->value,
         ])->count();
         $this->transition($race, RaceStatus::Completed, RaceEventType::Complete, ['results_count' => $classified]);
+        $this->notifyEntryUsers($race, RaceCompleted::class);
 
         return true;
     }
@@ -245,6 +251,7 @@ class RaceService
             return false;
         }
         $this->transition($race, RaceStatus::Lobby);
+        $this->notifyGroupMembers($race->group, RaceOpened::class, $race);
 
         return true;
     }
@@ -277,6 +284,10 @@ class RaceService
         ]);
         $this->recalculatePenaltyTotals($race, $driverId);
         $this->event($race, RaceEventType::Penalty, $driverId, ['seconds' => $seconds, 'reason' => trim($reason)]);
+        $users = $this->driverUsers($race->entries()->firstWhere('driver_id', $driverId)->driver);
+        foreach ($users as $user) {
+            $user->notify(new PenaltyIssued($race, $seconds, trim($reason)));
+        }
 
         return true;
     }
@@ -325,6 +336,36 @@ class RaceService
         }
 
         return collect($rows)->sortByDesc('in_field');
+    }
+
+    private function notifyEntryUsers(Race $race, string $notificationClass): void
+    {
+        $this->notifyRaceUsers($race->entries->map(fn (RaceEntry $entry) => $entry->driver)->filter(), $notificationClass, $race);
+    }
+
+    private function notifyGroupMembers(?Group $group, string $notificationClass, Race $race): void
+    {
+        if ($group === null) {
+            return;
+        }
+        $this->notifyRaceUsers($group->members, $notificationClass, $race);
+    }
+
+    private function notifyRaceUsers(iterable $drivers, string $notificationClass, Race $race): void
+    {
+        foreach ($drivers as $driver) {
+            foreach ($this->driverUsers($driver) as $user) {
+                $user->notify(new $notificationClass($race));
+            }
+        }
+    }
+
+    /** @return list<User> */
+    private function driverUsers(?Driver $driver): array
+    {
+        $user = $driver?->profile?->user;
+
+        return $user === null ? [] : [$user];
     }
 
     private function transition(Race $race, RaceStatus $to, ?RaceEventType $eventType = null, array $payload = []): void

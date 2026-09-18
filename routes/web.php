@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceSessionController;
@@ -23,6 +24,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/groups', [GroupController::class, 'store'])->name('groups.store');
     Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
     Route::get('/groups/{group}/members', [GroupController::class, 'members'])->name('groups.members');
+    Route::post('/groups/{group}/members', [GroupController::class, 'addMember'])->name('groups.members.store');
+    Route::patch('/groups/{group}/members/{driver}/role', [GroupController::class, 'updateMemberRole'])->name('groups.members.role');
+    Route::delete('/groups/{group}/members/{driver}', [GroupController::class, 'removeMember'])->name('groups.members.destroy');
     Route::post('/groups/{group}/availability', [GroupController::class, 'updateAvailability'])->name('groups.availability.update');
 
     Route::get('/races', [RaceController::class, 'index'])->name('races');
@@ -57,8 +61,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/seasons/{season}/edit', [SeasonController::class, 'edit'])->name('seasons.edit');
     Route::patch('/seasons/{season}', [SeasonController::class, 'update'])->name('seasons.update');
     Route::delete('/seasons/{season}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::view('/chat', 'feature-placeholder')->name('chat');
-    Route::view('/notifications', 'feature-placeholder')->name('notifications');
     Route::view('/settings', 'feature-placeholder')->name('settings');
     Route::view('/race-setup', 'feature-placeholder')->name('race-setup');
 

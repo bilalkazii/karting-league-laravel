@@ -4,7 +4,7 @@
         ['label' => 'My groups', 'href' => 'groups', 'icon' => 'users'],
         ['label' => 'Races', 'href' => 'races', 'icon' => 'flag'],
         ['label' => 'Championship', 'href' => 'championship', 'icon' => 'trophy'],
-        ['label' => 'Chat', 'href' => 'chat', 'icon' => 'message-square'],
+        ['label' => 'Drivers', 'href' => 'drivers', 'icon' => 'gauge'],
     ];
     $current = request()->route()?->getName();
 @endphp

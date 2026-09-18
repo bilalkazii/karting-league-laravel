@@ -30,7 +30,9 @@
                         </a>
                         <a href="{{ route('notifications') }}" class="relative grid size-9 place-items-center rounded-lg text-[var(--muted)] hover:bg-white/5 hover:text-white" aria-label="Notifications">
                             <x-lucide-bell class="size-[18px]" />
-                            <span class="absolute right-1 top-1 size-1.5 rounded-full bg-[var(--red)]"></span>
+                            @if (auth()->user()->unreadNotifications()->count() > 0)
+                                <span class="absolute right-1 top-1 size-1.5 rounded-full bg-[var(--red)]"></span>
+                            @endif
                         </a>
                     </div>
                 </header>
