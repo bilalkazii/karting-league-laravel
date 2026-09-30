@@ -1,5 +1,11 @@
 <x-app-layout>
     <div class="space-y-8">
+        @if (session('status'))
+            <div class="flex items-center gap-2 rounded-lg border border-[var(--green)]/30 bg-[var(--green)]/10 px-4 py-3 text-sm text-[var(--green)]" role="status">
+                <x-lucide-check-circle class="size-4" />{{ session('status') }}
+            </div>
+        @endif
+
         <div class="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)]">
             <div class="relative h-32 overflow-hidden bg-[#16100e] sm:h-36">
                 <div class="absolute inset-0 carbon"></div>
@@ -129,8 +135,31 @@
             @endif
         </section>
 
-        <section class="space-y-4">
-            <h2 class="text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Rounds</h2>
+        <section class="space-y-4" id="season-races">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Rounds</h2>
+                @if ($canManage)
+                    @if ($eligibleRaces->isEmpty())
+                        <span class="text-[10px] text-[var(--muted)]">No unassigned races in this group.</span>
+                    @else
+                        <form method="POST" action="{{ route('seasons.races.store', $season) }}" class="flex flex-wrap items-center gap-2">
+                            @csrf
+                            <label for="season-race" class="sr-only">Add race to season</label>
+                            <select id="season-race" name="race_id" required class="rounded-lg border border-[var(--line)] bg-[var(--panel-raised)] px-3 py-2 text-xs text-white outline-none focus:border-[var(--red)]">
+                                <option value="" disabled selected>Choose a race…</option>
+                                @foreach ($eligibleRaces as $eligible)
+                                    <option value="{{ $eligible->id }}">{{ $eligible->name }} · {{ $eligible->date?->format('d M Y') }}</option>
+                                @endforeach
+                            </select>
+                            <x-button type="submit" size="sm"><x-lucide-plus class="size-3.5" />Add race to season</x-button>
+                        </form>
+                    @endif
+                @endif
+            </div>
+
+            @error('race_id')
+                <p class="text-[10px] text-[var(--red-bright)]">{{ $message }}</p>
+            @enderror
 
             @if ($rounds->isEmpty())
                 <x-empty-state title="No races in this season" description="Races get attached to a season once scheduling opens." />

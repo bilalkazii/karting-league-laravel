@@ -6,14 +6,19 @@ use App\Enums\GroupRole;
 use App\Enums\RaceStatus;
 use App\Enums\ScoringMode;
 use App\Enums\SeasonStatus;
+use App\Http\Requests\AddRaceToSeasonRequest;
 use App\Http\Requests\StoreSeasonRequest;
 use App\Http\Requests\UpdateSeasonRequest;
 use App\Models\Group;
+use App\Models\Race;
 use App\Models\ScoringPoint;
 use App\Models\Season;
 use App\Support\StandingsService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class SeasonController extends Controller
@@ -153,6 +158,16 @@ class SeasonController extends Controller
         )['final'];
         $standingsDrivers = $participatingDrivers->keyBy('id');
 
+        $eligibleRaces = $canManage
+            ? Race::query()
+                ->where('group_id', $season->group_id)
+                ->whereNotIn('id', $season->races->pluck('id'))
+                ->where('status', '!=', RaceStatus::Cancelled->value)
+                ->orderByDesc('date')
+                ->orderByDesc('start_time')
+                ->get()
+            : collect();
+
         return view('championship.show', compact(
             'season',
             'rounds',
@@ -162,7 +177,8 @@ class SeasonController extends Controller
             'completedRaces',
             'upcomingRace',
             'canManage',
-            'canDelete'
+            'canDelete',
+            'eligibleRaces'
         ));
     }
 
@@ -209,6 +225,48 @@ class SeasonController extends Controller
         $season->delete();
 
         return redirect()->route('championship');
+    }
+
+    public function addRace(AddRaceToSeasonRequest $request, Season $season): RedirectResponse
+    {
+        $race = Race::findOrFail($request->integer('race_id'));
+
+        $this->authorize('manage', $race);
+
+        try {
+            DB::transaction(function () use ($season, $race): void {
+                // Lock the season row so concurrent requests cannot compute the
+                // same round number; the unique (season_id, round_number) index
+                // is the final backstop.
+                Season::query()->whereKey($season->getKey())->lockForUpdate()->first();
+
+                if ($season->races()->where('races.id', $race->id)->exists()) {
+                    abort(422, 'That race is already part of this season.');
+                }
+
+                $used = DB::table('season_races')
+                    ->where('season_id', $season->getKey())
+                    ->pluck('round_number')
+                    ->map(static fn ($number): int => (int) $number)
+                    ->all();
+
+                // Rule: assign the lowest positive round number not already used.
+                $round = 1;
+                while (in_array($round, $used, true)) {
+                    $round++;
+                }
+
+                $season->races()->attach($race->id, ['round_number' => $round]);
+            });
+        } catch (QueryException) {
+            throw ValidationException::withMessages([
+                'race_id' => 'That round was just assigned by someone else. Please try again.',
+            ]);
+        }
+
+        return redirect()
+            ->route('championship.show', $season)
+            ->with('status', $race->name.' added to '.$season->name.'.');
     }
 
     private function attachDefaultScoring(Season $season): void

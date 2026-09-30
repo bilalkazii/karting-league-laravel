@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/seasons/{season}/edit', [SeasonController::class, 'edit'])->name('seasons.edit');
     Route::patch('/seasons/{season}', [SeasonController::class, 'update'])->name('seasons.update');
     Route::delete('/seasons/{season}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
+    Route::post('/seasons/{season}/races', [SeasonController::class, 'addRace'])->name('seasons.races.store');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
