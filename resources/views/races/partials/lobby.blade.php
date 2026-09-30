@@ -30,24 +30,28 @@
                         <x-result-status-badge :status="$entry->status" />
                     </div>
                     <div class="mt-4 flex items-center gap-2">
-                        <form method="POST" action="{{ route('races.entries.update', ['race' => $race, 'driver' => $entry->driver_id]) }}" class="flex-1">
-                            @csrf
-                            <input type="hidden" name="confirmed" value="1" />
-                            <x-button type="submit" variant="secondary" size="sm" class="w-full"
-                                      :data-checked="$entry->confirmed">
-                                <x-lucide-check class="size-3.5" />{{ $entry->confirmed ? 'Confirmed' : 'Confirm' }}
-                            </x-button>
-                        </form>
-                        <form method="POST" action="{{ route('races.entries.ready', ['race' => $race, 'driver' => $entry->driver_id]) }}" class="flex-1">
-                            @csrf
-                            <x-button type="submit" variant="secondary" size="sm" class="w-full"
-                                      :data-checked="$entry->ready"
-                                      :disabled="! $entry->confirmed">
-                                <x-lucide-flag class="size-3.5" />{{ $entry->ready ? 'Ready' : 'Mark ready' }}
-                            </x-button>
-                        </form>
-                        @if ($currentDriver && $currentEntry && $currentEntry->driver_id === $entry->driver_id && in_array($status, ['draft', 'lobby'], true) && ! $entry->confirmed)
-                            <x-badge class="border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)]">Waiting on you</x-badge>
+                        @if (in_array($race->status->value, ['draft', 'lobby'], true))
+                            <form method="POST" action="{{ route('races.entries.update', ['race' => $race, 'driver' => $entry->driver_id]) }}" class="flex-1">
+                                @csrf
+                                <input type="hidden" name="confirmed" value="1" />
+                                <x-button type="submit" variant="secondary" size="sm" class="w-full"
+                                          :data-checked="$entry->confirmed">
+                                    <x-lucide-check class="size-3.5" />{{ $entry->confirmed ? 'Confirmed' : 'Confirm' }}
+                                </x-button>
+                            </form>
+                            <form method="POST" action="{{ route('races.entries.ready', ['race' => $race, 'driver' => $entry->driver_id]) }}" class="flex-1">
+                                @csrf
+                                <x-button type="submit" variant="secondary" size="sm" class="w-full"
+                                          :data-checked="$entry->ready"
+                                          :disabled="! $entry->confirmed">
+                                    <x-lucide-flag class="size-3.5" />{{ $entry->ready ? 'Ready' : 'Mark ready' }}
+                                </x-button>
+                            </form>
+                            @if ($currentDriver && $currentEntry && $currentEntry->driver_id === $entry->driver_id && ! $entry->confirmed)
+                                <x-badge class="border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)]">Waiting on you</x-badge>
+                            @endif
+                        @else
+                            <span class="text-[10px] uppercase tracking-widest text-[var(--muted)]">Check-in closed</span>
                         @endif
                     </div>
                 </div>

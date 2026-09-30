@@ -48,24 +48,32 @@
                             </div>
                         </td>
                         <td class="px-4 py-3">
-                            <form method="POST" action="{{ route('races.entries.update', ['race' => $race, 'driver' => $row['driver_id']]) }}" class="flex items-center gap-1.5">
-                                @csrf
-                                <input type="number" name="kart_number" min="1" max="99" value="{{ $row['kart_number'] }}"
-                                       class="w-16 rounded-lg border border-[var(--line)] bg-white/[.03] px-2 py-1.5 text-center font-mono text-xs text-white outline-none focus:border-[var(--red)]" />
-                                <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]">Set</x-button>
-                            </form>
+                            @if (in_array($race->status->value, ['qualifying', 'grid'], true))
+                                <form method="POST" action="{{ route('races.entries.update', ['race' => $race, 'driver' => $row['driver_id']]) }}" class="flex items-center gap-1.5">
+                                    @csrf
+                                    <input type="number" name="kart_number" min="1" max="99" value="{{ $row['kart_number'] }}"
+                                           class="w-16 rounded-lg border border-[var(--line)] bg-white/[.03] px-2 py-1.5 text-center font-mono text-xs text-white outline-none focus:border-[var(--red)]" />
+                                    <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]">Set</x-button>
+                                </form>
+                            @else
+                                <span class="font-mono text-xs">{{ $row['kart_number'] ?: '—' }}</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 font-mono text-xs">{{ RaceUtils::formatLapTime($row['qualifying_time_ms']) }}</td>
                         <td class="px-4 py-3">
-                            <form method="POST" action="{{ route('races.entries.update', ['race' => $race, 'driver' => $row['driver_id']]) }}" class="flex items-center gap-1.5">
-                                @csrf
-                                <input type="hidden" name="kart_number" value="{{ $row['kart_number'] }}" />
-                                <input type="text" name="grid_penalty" value="{{ $row['grid_penalty_seconds'] }}"
-                                       inputmode="numeric" pattern="[0-9]+"
-                                       class="w-16 rounded-lg border border-[var(--line)] bg-white/[.03] px-2 py-1.5 text-center font-mono text-xs text-white outline-none focus:border-[var(--red)]" />
-                                <span class="text-[10px] text-[var(--muted)]">s</span>
-                                <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]">Apply</x-button>
-                            </form>
+                            @if (in_array($race->status->value, ['qualifying', 'grid'], true))
+                                <form method="POST" action="{{ route('races.entries.update', ['race' => $race, 'driver' => $row['driver_id']]) }}" class="flex items-center gap-1.5">
+                                    @csrf
+                                    <input type="hidden" name="kart_number" value="{{ $row['kart_number'] }}" />
+                                    <input type="text" name="grid_penalty" value="{{ $row['grid_penalty_seconds'] }}"
+                                           inputmode="numeric" pattern="[0-9]+"
+                                           class="w-16 rounded-lg border border-[var(--line)] bg-white/[.03] px-2 py-1.5 text-center font-mono text-xs text-white outline-none focus:border-[var(--red)]" />
+                                    <span class="text-[10px] text-[var(--muted)]">s</span>
+                                    <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]">Apply</x-button>
+                                </form>
+                            @else
+                                <span class="font-mono text-xs">{{ $row['grid_penalty_seconds'] ? '+'.$row['grid_penalty_seconds'].'s' : '—' }}</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach

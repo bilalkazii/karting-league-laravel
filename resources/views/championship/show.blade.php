@@ -43,13 +43,15 @@
                         <x-lucide-pencil class="size-3.5" />Edit season
                     </x-button>
                 </a>
-                <form method="POST" action="{{ route('seasons.destroy', $season) }}" onsubmit="return confirm('Delete {{ addslashes($season->name) }} and all of its records?')">
-                    @csrf
-                    @method('DELETE')
-                    <x-button type="submit" variant="secondary" size="sm">
-                        <x-lucide-trash-2 class="size-3.5" />Delete season
-                    </x-button>
-                </form>
+                @if ($canDelete)
+                    <form method="POST" action="{{ route('seasons.destroy', $season) }}" onsubmit="return confirm('Delete {{ addslashes($season->name) }}? This season has no races, records, or awards.')">
+                        @csrf
+                        @method('DELETE')
+                        <x-button type="submit" variant="secondary" size="sm">
+                            <x-lucide-trash-2 class="size-3.5" />Delete season
+                        </x-button>
+                    </form>
+                @endif
             </div>
         @endif
 
@@ -73,6 +75,59 @@
                 </div>
             </x-card>
         @endif
+
+        <section class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Standings</h2>
+                <span class="text-[10px] text-[var(--muted)]">{{ $completedRaces }} {{ \Illuminate\Support\Str::plural('race', $completedRaces) }} scored</span>
+            </div>
+
+            @if (empty($standings))
+                <x-empty-state title="No standings yet" description="Standings appear once races in this season are completed." />
+            @else
+                <div class="overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--panel)]">
+                    <table class="w-full text-left text-sm">
+                        <caption class="sr-only">Championship standings for {{ $season->name }}</caption>
+                        <thead>
+                            <tr class="border-b border-[var(--line)] text-[10px] uppercase tracking-widest text-[var(--muted)]">
+                                <th scope="col" class="px-4 py-3">Pos</th>
+                                <th scope="col" class="px-4 py-3">Driver</th>
+                                <th scope="col" class="px-4 py-3 text-right">Points</th>
+                                <th scope="col" class="px-4 py-3 text-right">Gap</th>
+                                <th scope="col" class="px-4 py-3 text-right">Wins</th>
+                                <th scope="col" class="px-4 py-3 text-right">Podiums</th>
+                                <th scope="col" class="px-4 py-3 text-right">Poles</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[var(--line)]/60">
+                            @foreach ($standings as $row)
+                                @php $driver = $standingsDrivers[$row['driver_id']] ?? null; @endphp
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <span class="grid size-7 place-items-center rounded-lg border {{ $row['position'] === 1 ? 'border-[var(--red)]/40 bg-[var(--red)]/10 font-black text-[var(--red-bright)]' : 'border-[var(--line)] bg-white/[.03] font-mono text-xs' }}">{{ $row['position'] }}</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        @if ($driver)
+                                            <a href="{{ route('drivers.show', $driver) }}" class="flex items-center gap-2.5 hover:text-white">
+                                                <x-driver-avatar size="sm" :color="$driver->avatar_color" :textColor="$driver->avatar_text_color" :initials="$driver->nickname ?: mb_substr($driver->profile?->full_name ?? '?', 0, 2)" />
+                                                <span class="font-semibold">{{ $driver->display_name }}</span>
+                                            </a>
+                                        @else
+                                            <span class="text-[var(--muted)]">Driver #{{ $row['driver_id'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono font-bold text-white">{{ $row['points'] }}</td>
+                                    <td class="px-4 py-3 text-right font-mono text-xs text-[var(--muted)]">{{ $row['position'] === 1 ? '—' : '+'.$row['points_gap'] }}</td>
+                                    <td class="px-4 py-3 text-right font-mono text-xs">{{ $row['wins'] }}</td>
+                                    <td class="px-4 py-3 text-right font-mono text-xs">{{ $row['podiums'] }}</td>
+                                    <td class="px-4 py-3 text-right font-mono text-xs">{{ $row['poles'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </section>
 
         <section class="space-y-4">
             <h2 class="text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Rounds</h2>

@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\DriverAvailability;
-use App\Enums\GroupRole;
 use App\Enums\GroupPrivacy;
+use App\Enums\GroupRole;
 use App\Models\Driver;
 use App\Models\Group;
 use App\Models\Profile;
@@ -21,6 +21,12 @@ class DemoDataSeeder extends Seeder
 {
     public function run(): void
     {
+        // Never seed demo identities (including the known demo@karting.app
+        // account) in production, regardless of how the seeder is invoked.
+        if (app()->environment('production')) {
+            return;
+        }
+
         $now = now();
 
         $users = [

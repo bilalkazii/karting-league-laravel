@@ -421,7 +421,8 @@ class InviteTest extends TestCase
         $this->get(route('invites.show', $result['token']))
             ->assertOk()
             ->assertSee($group->name)
-            ->assertSee('Sign in');
+            ->assertSee('Sign in')
+            ->assertSee('invite='.$result['token'], false);
     }
 
     public function test_invitation_page_shows_expired_and_revoked_states(): void
@@ -453,6 +454,7 @@ class InviteTest extends TestCase
         $this->get(route('invites.show', $result['token']))->assertOk();
 
         $this->post('/register', [
+            'invite' => $result['token'],
             'name' => 'New Joiner',
             'email' => 'joiner@example.com',
             'password' => 'password',

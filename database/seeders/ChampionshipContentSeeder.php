@@ -25,6 +25,12 @@ class ChampionshipContentSeeder extends Seeder
 {
     public function run(): void
     {
+        // Demo championship content depends on the demo dataset; never seed it
+        // in production.
+        if (app()->environment('production')) {
+            return;
+        }
+
         $group = Group::where('name', 'Karting Crew')->firstOrFail();
 
         /** @var array<int, Driver> $driverByMockId */
@@ -88,9 +94,9 @@ class ChampionshipContentSeeder extends Seeder
         $races = [
             ['key' => 'rc_8', 'name' => 'Opening Sprint',    'venue_name' => 'Nashik Karting Arena', 'date' => '2026-03-14', 'start_time' => '16:00', 'format' => 'sprint',  'status' => 'completed', 'organizer' => 'drv_1', 'rules' => 'Season opener. Rolling start after one formation lap.', 'created_at' => '2026-02-25', 'updated_at' => '2026-03-14'],
             ['key' => 'rc_9', 'name' => 'Grand Prix Sprint', 'venue_name' => 'Pune Race Zone',      'date' => '2026-05-09', 'start_time' => '15:30', 'format' => 'feature', 'status' => 'completed', 'organizer' => 'drv_5', 'rules' => 'Feature-length run. One score-counting lap for the grid.', 'created_at' => '2026-04-20', 'updated_at' => '2026-05-09'],
-            ['key' => 'rc_10','name' => 'Monsoon Special',   'venue_name' => 'Nashik Karting Arena', 'date' => '2026-07-18', 'start_time' => '16:30', 'format' => 'sprint',  'status' => 'completed', 'organizer' => 'drv_1', 'rules' => 'Run under full wet conditions if rain holds. No red-flag restarts for drizzle.', 'created_at' => '2026-07-01', 'updated_at' => '2026-07-18'],
-            ['key' => 'rc_11','name' => 'Autumn Sprint',     'venue_name' => 'Pune Race Zone',      'date' => '2026-10-03', 'start_time' => '15:00', 'format' => 'sprint',  'status' => 'draft',     'organizer' => 'drv_1', 'rules' => '', 'created_at' => '2026-09-10', 'updated_at' => '2026-09-10'],
-            ['key' => 'rc_12','name' => 'Champions Finale',  'venue_name' => 'Nashik Karting Arena', 'date' => '2026-11-21', 'start_time' => '16:00', 'format' => 'feature', 'status' => 'draft',     'organizer' => 'drv_5', 'rules' => '', 'created_at' => '2026-09-10', 'updated_at' => '2026-09-10'],
+            ['key' => 'rc_10', 'name' => 'Monsoon Special',   'venue_name' => 'Nashik Karting Arena', 'date' => '2026-07-18', 'start_time' => '16:30', 'format' => 'sprint',  'status' => 'completed', 'organizer' => 'drv_1', 'rules' => 'Run under full wet conditions if rain holds. No red-flag restarts for drizzle.', 'created_at' => '2026-07-01', 'updated_at' => '2026-07-18'],
+            ['key' => 'rc_11', 'name' => 'Autumn Sprint',     'venue_name' => 'Pune Race Zone',      'date' => '2026-10-03', 'start_time' => '15:00', 'format' => 'sprint',  'status' => 'draft',     'organizer' => 'drv_1', 'rules' => '', 'created_at' => '2026-09-10', 'updated_at' => '2026-09-10'],
+            ['key' => 'rc_12', 'name' => 'Champions Finale',  'venue_name' => 'Nashik Karting Arena', 'date' => '2026-11-21', 'start_time' => '16:00', 'format' => 'feature', 'status' => 'draft',     'organizer' => 'drv_5', 'rules' => '', 'created_at' => '2026-09-10', 'updated_at' => '2026-09-10'],
         ];
 
         $raceModel = [];
@@ -141,13 +147,13 @@ class ChampionshipContentSeeder extends Seeder
             ['rc_9', 'drv_4', 22, 'dnf',      true, true, 7, 0, 42650, $gc, null, 0, 'Spin at turn 1'],
             ['rc_9', 'drv_6', 11, 'dns',      true, false, 8, 0, 42880, $gc, null, 0, 'Starter motor failure'],
             // Monsoon Special (rc_10)
-            ['rc_10','drv_1', 7,  'finished', true, true, 1, 0, 41770, $gc, 1, 0, ''],
-            ['rc_10','drv_5', 9,  'finished', true, true, 2, 0, 41820, $gc, 2, 0, ''],
-            ['rc_10','drv_2', 14, 'finished', true, true, 3, 0, 42040, $gc, 3, 0, ''],
-            ['rc_10','drv_7', 5,  'finished', true, true, 4, 0, 41990, $gc, 4, 0, ''],
-            ['rc_10','drv_8', 19, 'finished', true, true, 5, 0, 42330, $gc, 5, 0, ''],
-            ['rc_10','drv_3', 3,  'finished', true, true, 6, 0, 42480, $gc, 6, 0, ''],
-            ['rc_10','drv_6', 11, 'retired',  true, true, 7, 0, 42850, $gc, null, 0, 'Radiator stone strike'],
+            ['rc_10', 'drv_1', 7,  'finished', true, true, 1, 0, 41770, $gc, 1, 0, ''],
+            ['rc_10', 'drv_5', 9,  'finished', true, true, 2, 0, 41820, $gc, 2, 0, ''],
+            ['rc_10', 'drv_2', 14, 'finished', true, true, 3, 0, 42040, $gc, 3, 0, ''],
+            ['rc_10', 'drv_7', 5,  'finished', true, true, 4, 0, 41990, $gc, 4, 0, ''],
+            ['rc_10', 'drv_8', 19, 'finished', true, true, 5, 0, 42330, $gc, 5, 0, ''],
+            ['rc_10', 'drv_3', 3,  'finished', true, true, 6, 0, 42480, $gc, 6, 0, ''],
+            ['rc_10', 'drv_6', 11, 'retired',  true, true, 7, 0, 42850, $gc, null, 0, 'Radiator stone strike'],
         ];
 
         foreach ($entries as $e) {
@@ -215,10 +221,10 @@ class ChampionshipContentSeeder extends Seeder
         $teamLeader = Team::where('name', 'Apex Racing')->firstOrFail();
         $seasonAwards = [
             ['aw_7',  'team_champion',     'Team Leader',              'Leading team after round 3',             null,         $teamLeader->id, null,     '118 pts',  '2026-07-19'],
-            ['aw_8',  'championship_winner','Leader After Round 3',    'Current standings leader',              'drv_1',      null,            null,     '70 pts',   '2026-07-19'],
+            ['aw_8',  'championship_winner', 'Leader After Round 3',    'Current standings leader',              'drv_1',      null,            null,     '70 pts',   '2026-07-19'],
             ['aw_9',  'most_wins',         'Most Wins (3 rounds)',    'Most race wins so far',                  'drv_1',      null,            null,     '2 wins',   '2026-07-19'],
             ['aw_10', 'most_poles',        'Most Poles (3 rounds)',   'Most pole positions so far',             'drv_1',      null,            null,     '2 poles',  '2026-07-19'],
-            ['aw_11', 'cleanest_season',   'Cleanest Season (3 rounds)','Most penalty-free races so far',       'drv_1',      null,            null,     '3 races',  '2026-07-19'],
+            ['aw_11', 'cleanest_season',   'Cleanest Season (3 rounds)', 'Most penalty-free races so far',       'drv_1',      null,            null,     '3 races',  '2026-07-19'],
         ];
         foreach ($seasonAwards as $a) {
             Award::firstOrCreate(

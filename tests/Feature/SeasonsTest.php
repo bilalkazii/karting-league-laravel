@@ -431,7 +431,7 @@ class SeasonsTest extends TestCase
         $this->assertNotSame('Hijacked', $season->refresh()->name);
     }
 
-    public function test_destroy_removes_season_and_related_records_but_keeps_races(): void
+    public function test_season_with_history_cannot_be_destroyed(): void
     {
         $user = $this->demoActor();
         $season = $this->seededSeason();
@@ -439,18 +439,34 @@ class SeasonsTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('seasons.destroy', $season))
-            ->assertRedirect(route('championship'));
+            ->assertStatus(422);
 
-        $this->assertDatabaseMissing('seasons', ['id' => $season->id]);
-        $this->assertDatabaseMissing('season_scoring', ['season_id' => $season->id]);
-        $this->assertDatabaseMissing('scoring_points', ['season_id' => $season->id]);
-        $this->assertDatabaseMissing('season_races', ['season_id' => $season->id]);
-        $this->assertDatabaseMissing('awards', ['season_id' => $season->id]);
-        $this->assertDatabaseMissing('season_records', ['season_id' => $season->id]);
+        $this->assertDatabaseHas('seasons', ['id' => $season->id]);
+        $this->assertDatabaseHas('season_scoring', ['season_id' => $season->id]);
+        $this->assertDatabaseHas('season_races', ['season_id' => $season->id]);
+        $this->assertDatabaseHas('awards', ['season_id' => $season->id]);
+        $this->assertDatabaseHas('season_records', ['season_id' => $season->id]);
 
         foreach ($raceIds as $raceId) {
             $this->assertDatabaseHas('races', ['id' => $raceId]);
         }
+    }
+
+    public function test_empty_season_can_be_destroyed(): void
+    {
+        $user = $this->demoActor();
+        $group = $user->driver->groups()->where('name', 'Karting Crew')->firstOrFail();
+        $season = Season::create([
+            'group_id' => $group->id,
+            'name' => 'Empty Pre-Season',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('seasons.destroy', $season))
+            ->assertRedirect(route('championship'));
+
+        $this->assertDatabaseMissing('seasons', ['id' => $season->id]);
     }
 
     public function test_destroy_requires_organizer_role(): void

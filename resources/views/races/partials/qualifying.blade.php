@@ -53,24 +53,28 @@
                             {{ $valid && $diff !== null ? '+'.RaceUtils::formatStopwatchMs($diff) : '—' }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex justify-end gap-1.5">
-                                <form method="POST" action="{{ route('races.qualifying.record', $race) }}">
-                                    @csrf
-                                    <input type="hidden" name="driver_id" value="{{ $row['driver_id'] }}" />
-                                    <input type="hidden" name="action" value="{{ $valid ? 'invalidate' : 'restore' }}" />
-                                    <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]">
-                                        {{ $valid ? 'Invalidate' : 'Restore' }}
-                                    </x-button>
-                                </form>
-                                <form method="POST" action="{{ route('races.qualifying.record', $race) }}">
-                                    @csrf
-                                    <input type="hidden" name="driver_id" value="{{ $row['driver_id'] }}" />
-                                    <input type="hidden" name="action" value="clear" />
-                                    <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]" :disabled="$row['qualifying_time_ms'] === null">
-                                        Clear
-                                    </x-button>
-                                </form>
-                            </div>
+                            @if ($race->status->value === 'qualifying')
+                                <div class="flex justify-end gap-1.5">
+                                    <form method="POST" action="{{ route('races.qualifying.record', $race) }}">
+                                        @csrf
+                                        <input type="hidden" name="driver_id" value="{{ $row['driver_id'] }}" />
+                                        <input type="hidden" name="action" value="{{ $valid ? 'invalidate' : 'restore' }}" />
+                                        <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]">
+                                            {{ $valid ? 'Invalidate' : 'Restore' }}
+                                        </x-button>
+                                    </form>
+                                    <form method="POST" action="{{ route('races.qualifying.record', $race) }}">
+                                        @csrf
+                                        <input type="hidden" name="driver_id" value="{{ $row['driver_id'] }}" />
+                                        <input type="hidden" name="action" value="clear" />
+                                        <x-button type="submit" variant="ghost" size="sm" class="text-[var(--muted)]" :disabled="$row['qualifying_time_ms'] === null">
+                                            Clear
+                                        </x-button>
+                                    </form>
+                                </div>
+                            @else
+                                <span class="text-[10px] uppercase tracking-widest text-[var(--muted)]">Locked</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
@@ -78,10 +82,12 @@
         </table>
     </div>
 
-    <details class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
-        <summary class="cursor-pointer text-xs font-black uppercase tracking-[.2em] text-[var(--muted)]">Record a lap time</summary>
-        <div class="mt-3">
-            @include('races.partials.qualifying-clock')
-        </div>
-    </details>
+    @if ($race->status->value === 'qualifying')
+        <details class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+            <summary class="cursor-pointer text-xs font-black uppercase tracking-[.2em] text-[var(--muted)]">Record a lap time</summary>
+            <div class="mt-3">
+                @include('races.partials.qualifying-clock')
+            </div>
+        </details>
+    @endif
 </div>

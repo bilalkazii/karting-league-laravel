@@ -20,6 +20,7 @@ use App\Notifications\RaceCompleted;
 use App\Notifications\RaceOpened;
 use App\Support\RaceUtils;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Guards and performs every mutating race operation, recording the matching
@@ -29,6 +30,8 @@ class RaceService
 {
     public function setParticipants(Race $race, array $driverIds): void
     {
+        $this->ensureStatus($race, [RaceStatus::Draft, RaceStatus::Lobby]);
+
         $keep = array_map('intval', $driverIds);
         $existing = Collection::make($race->entries()->pluck('driver_id'))->all();
 
@@ -54,12 +57,16 @@ class RaceService
 
     public function updateKart(Race $race, int $driverId, int $kartNumber): void
     {
+        $this->ensureStatus($race, [RaceStatus::Draft, RaceStatus::Lobby, RaceStatus::Qualifying, RaceStatus::Grid]);
+
         $entry = $this->entryOrFail($race, $driverId);
         $entry->update(['kart_number' => max(0, $kartNumber)]);
     }
 
     public function toggleConfirmed(Race $race, int $driverId): void
     {
+        $this->ensureStatus($race, [RaceStatus::Draft, RaceStatus::Lobby]);
+
         $entry = $this->entryOrFail($race, $driverId);
         $confirmed = ! $entry->confirmed;
         $entry->update([
@@ -73,6 +80,8 @@ class RaceService
 
     public function toggleReady(Race $race, int $driverId): void
     {
+        $this->ensureStatus($race, [RaceStatus::Draft, RaceStatus::Lobby]);
+
         $entry = $this->entryOrFail($race, $driverId);
         if (! $entry->confirmed) {
             return;
@@ -87,6 +96,8 @@ class RaceService
 
     public function setDriverStatus(Race $race, int $driverId, string $status): void
     {
+        $this->ensureStatus($race, [RaceStatus::Grid, RaceStatus::Racing]);
+
         $entry = $this->entryOrFail($race, $driverId);
         if (($entry->status?->value ?? $entry->getRawOriginal('status')) === $status) {
             return;
@@ -115,6 +126,8 @@ class RaceService
 
     public function recordQualifyingTime(Race $race, int $driverId, int $timeMs): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying]);
+
         $entry = $this->entryOrFail($race, $driverId);
         if ($timeMs <= 0 || $timeMs > 3_600_000) {
             return;
@@ -128,6 +141,8 @@ class RaceService
 
     public function manualCorrectQualifying(Race $race, int $driverId, int $timeMs): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying]);
+
         $entry = $this->entryOrFail($race, $driverId);
         if ($timeMs <= 0 || $timeMs > 3_600_000) {
             return;
@@ -139,6 +154,8 @@ class RaceService
 
     public function invalidateQualifying(Race $race, int $driverId): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying]);
+
         $entry = $this->entryOrFail($race, $driverId);
         if ($entry->qualifying_time_ms === null) {
             return;
@@ -149,6 +166,8 @@ class RaceService
 
     public function restoreQualifying(Race $race, int $driverId): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying]);
+
         $entry = $this->entryOrFail($race, $driverId);
         $current = $entry->qualifying_status?->value ?? $entry->getRawOriginal('qualifying_status');
         if ($current !== QualifyingStatus::Invalid->value) {
@@ -160,6 +179,8 @@ class RaceService
 
     public function clearQualifying(Race $race, int $driverId): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying]);
+
         $entry = $this->entryOrFail($race, $driverId);
         if ($entry->qualifying_time_ms === null) {
             return;
@@ -173,6 +194,8 @@ class RaceService
 
     public function setGridPosition(Race $race, int $driverId, ?int $position): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying, RaceStatus::Grid]);
+
         $entry = $this->entryOrFail($race, $driverId);
         $entry->update(['grid_position' => $position]);
         $this->event($race, RaceEventType::GridChange, $driverId, $position !== null ? ['position' => $position] : []);
@@ -180,6 +203,8 @@ class RaceService
 
     public function setGridPenalty(Race $race, int $driverId, int $seconds): void
     {
+        $this->ensureStatus($race, [RaceStatus::Qualifying, RaceStatus::Grid]);
+
         $entry = $this->entryOrFail($race, $driverId);
         $entry->update(['grid_penalty_seconds' => max(0, $seconds)]);
         $this->event($race, RaceEventType::GridPenalty, $driverId, ['seconds' => max(0, $seconds)]);
@@ -187,90 +212,120 @@ class RaceService
 
     public function lockGrid(Race $race): bool
     {
-        if (($race->status?->value ?? $race->getRawOriginal('status')) !== RaceStatus::Qualifying->value) {
-            return false;
-        }
+        return DB::transaction(function () use ($race) {
+            $race = $this->lockedRace($race);
 
-        $rows = RaceUtils::computeGridRows(RaceUtils::entriesToArrays($race->entries));
-        foreach ($rows as $row) {
-            if ($row['grid_position'] !== null) {
-                $race->entries()->where('driver_id', $row['driver_id'])
-                    ->update(['grid_position' => $row['grid_position']]);
+            if ($this->statusOf($race) !== RaceStatus::Qualifying->value) {
+                return false;
             }
-        }
 
-        $this->transition($race, RaceStatus::Grid);
+            $rows = RaceUtils::computeGridRows(RaceUtils::entriesToArrays($race->entries));
+            foreach ($rows as $row) {
+                if ($row['grid_position'] !== null) {
+                    $race->entries()->where('driver_id', $row['driver_id'])
+                        ->update(['grid_position' => $row['grid_position']]);
+                }
+            }
 
-        return true;
+            $this->transition($race, RaceStatus::Grid);
+
+            return true;
+        });
     }
 
     public function startRace(Race $race): bool
     {
-        if (($race->status?->value ?? $race->getRawOriginal('status')) !== RaceStatus::Grid->value) {
-            return false;
-        }
-        $race->entries()->where('confirmed', true)->where('ready', true)
-            ->update(['status' => RaceDriverStatus::Racing->value]);
-        $this->transition($race, RaceStatus::Racing, RaceEventType::RaceStart, ['format' => $race->format?->value ?? 'sprint']);
+        return DB::transaction(function () use ($race) {
+            $race = $this->lockedRace($race);
 
-        return true;
+            if ($this->statusOf($race) !== RaceStatus::Grid->value) {
+                return false;
+            }
+
+            $race->entries()->where('confirmed', true)->where('ready', true)
+                ->update(['status' => RaceDriverStatus::Racing->value]);
+            $this->transition($race, RaceStatus::Racing, RaceEventType::RaceStart, ['format' => $race->format?->value ?? 'sprint']);
+
+            return true;
+        });
     }
 
     public function completeRace(Race $race): bool
     {
-        $status = $race->status?->value ?? $race->getRawOriginal('status');
-        if (! in_array($status, [RaceStatus::Racing->value, RaceStatus::Grid->value], true)) {
-            return false;
-        }
-        $classified = $race->entries()->whereIn('status', [
-            RaceDriverStatus::Finished->value,
-            RaceDriverStatus::Dnf->value,
-            RaceDriverStatus::Dns->value,
-            RaceDriverStatus::Retired->value,
-            RaceDriverStatus::Withdrawn->value,
-        ])->count();
-        $this->transition($race, RaceStatus::Completed, RaceEventType::Complete, ['results_count' => $classified]);
-        $this->notifyEntryUsers($race, RaceCompleted::class);
+        return DB::transaction(function () use ($race) {
+            $race = $this->lockedRace($race);
 
-        return true;
+            if (! in_array($this->statusOf($race), [RaceStatus::Racing->value, RaceStatus::Grid->value], true)) {
+                return false;
+            }
+
+            $classified = $race->entries()->whereIn('status', [
+                RaceDriverStatus::Finished->value,
+                RaceDriverStatus::Dnf->value,
+                RaceDriverStatus::Dns->value,
+                RaceDriverStatus::Retired->value,
+                RaceDriverStatus::Withdrawn->value,
+            ])->count();
+            $this->transition($race, RaceStatus::Completed, RaceEventType::Complete, ['results_count' => $classified]);
+            $this->notifyEntryUsers($race, RaceCompleted::class);
+
+            return true;
+        });
     }
 
     public function cancelRace(Race $race): bool
     {
-        $current = $race->status?->value ?? $race->getRawOriginal('status');
-        if ($current === RaceStatus::Completed->value || $current === RaceStatus::Cancelled->value) {
-            return $current === RaceStatus::Completed->value;
-        }
-        $this->transition($race, RaceStatus::Cancelled);
+        return DB::transaction(function () use ($race) {
+            $race = $this->lockedRace($race);
+            $current = $this->statusOf($race);
 
-        return true;
+            if ($current === RaceStatus::Completed->value || $current === RaceStatus::Cancelled->value) {
+                return $current === RaceStatus::Completed->value;
+            }
+            $this->transition($race, RaceStatus::Cancelled);
+
+            return true;
+        });
     }
 
     public function openLobby(Race $race): bool
     {
-        if (($race->status?->value ?? $race->getRawOriginal('status')) !== RaceStatus::Draft->value) {
-            return false;
-        }
-        $this->transition($race, RaceStatus::Lobby);
-        $this->notifyGroupMembers($race->group, RaceOpened::class, $race);
+        return DB::transaction(function () use ($race) {
+            $race = $this->lockedRace($race);
 
-        return true;
+            if ($this->statusOf($race) !== RaceStatus::Draft->value) {
+                return false;
+            }
+            $this->transition($race, RaceStatus::Lobby);
+            $this->notifyGroupMembers($race->group, RaceOpened::class, $race);
+
+            return true;
+        });
     }
 
     public function startQualifying(Race $race): bool
     {
-        if (($race->status?->value ?? $race->getRawOriginal('status')) !== RaceStatus::Lobby->value) {
-            return false;
-        }
-        $race->entries()->whereNull('qualifying_time_ms')
-            ->update(['qualifying_status' => QualifyingStatus::NotStarted->value]);
-        $this->transition($race, RaceStatus::Qualifying, RaceEventType::QualifyingStart, ['lap_count' => $race->qualifying_lap_count]);
+        return DB::transaction(function () use ($race) {
+            $race = $this->lockedRace($race);
 
-        return true;
+            if ($this->statusOf($race) !== RaceStatus::Lobby->value) {
+                return false;
+            }
+            $race->entries()->whereNull('qualifying_time_ms')
+                ->update(['qualifying_status' => QualifyingStatus::NotStarted->value]);
+            $this->transition($race, RaceStatus::Qualifying, RaceEventType::QualifyingStart, ['lap_count' => $race->qualifying_lap_count]);
+
+            return true;
+        });
     }
 
     public function issuePenalty(Race $race, int $driverId, int $seconds, string $reason, int $issuerId): bool
     {
+        $this->ensureStatus($race, [
+            RaceStatus::Draft, RaceStatus::Lobby, RaceStatus::Qualifying,
+            RaceStatus::Grid, RaceStatus::Racing, RaceStatus::Completed,
+        ]);
+
         if ($seconds <= 0 || trim($reason) === '' || $this->entryOrNull($race, $driverId) === null) {
             return false;
         }
@@ -298,6 +353,11 @@ class RaceService
 
     public function cancelPenalty(Race $race, RacePenalty $penalty): bool
     {
+        $this->ensureStatus($race, [
+            RaceStatus::Draft, RaceStatus::Lobby, RaceStatus::Qualifying,
+            RaceStatus::Grid, RaceStatus::Racing, RaceStatus::Completed,
+        ]);
+
         if ($penalty->race_id !== $race->id) {
             return false;
         }
@@ -381,6 +441,39 @@ class RaceService
     {
         $race->update(['status' => $to->value]);
         $this->event($race, $eventType ?? RaceEventType::StatusChange, null, $payload !== [] ? $payload : ['status' => $to->value]);
+    }
+
+    /**
+     * The race's persisted status, safe to read even when the enum cast failed.
+     */
+    private function statusOf(Race $race): string
+    {
+        return $race->status?->value ?? $race->getRawOriginal('status');
+    }
+
+    /**
+     * Re-fetch the race inside the current transaction with a write lock so a
+     * concurrent transition cannot slip through between the check and the write.
+     */
+    private function lockedRace(Race $race): Race
+    {
+        return Race::query()->whereKey($race->getKey())->lockForUpdate()->firstOrFail();
+    }
+
+    /**
+     * Reject a mutation that is not legal in the race's current state.
+     *
+     * @param  list<RaceStatus>  $allowed
+     */
+    private function ensureStatus(Race $race, array $allowed): void
+    {
+        $values = array_map(static fn (RaceStatus $status): string => $status->value, $allowed);
+
+        abort_unless(
+            in_array($this->statusOf($race), $values, true),
+            422,
+            "This action is not available while the race is {$this->statusOf($race)}."
+        );
     }
 
     private function event(Race $race, RaceEventType $type, ?int $driverId, array $payload = []): void

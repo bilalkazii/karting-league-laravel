@@ -159,6 +159,12 @@ class RaceController extends Controller
     {
         $this->authorize('update', $race);
 
+        abort_unless(
+            in_array($race->status->value, [RaceStatus::Draft->value, RaceStatus::Lobby->value], true),
+            422,
+            'A race can only be edited while it is a draft or in the lobby.'
+        );
+
         $race->update([
             'name' => $request->input('name'),
             'venue_name' => $request->input('venue_name'),
@@ -175,6 +181,12 @@ class RaceController extends Controller
     public function destroy(Race $race): RedirectResponse
     {
         $this->authorize('delete', $race);
+
+        abort_unless(
+            in_array($race->status->value, [RaceStatus::Draft->value, RaceStatus::Cancelled->value], true),
+            422,
+            'Only a draft or cancelled race can be deleted.'
+        );
 
         $race->delete();
 

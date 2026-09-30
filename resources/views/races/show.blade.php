@@ -51,9 +51,11 @@
                         </x-button>
                     </form>
                 @endif
-                <a href="{{ route('races.edit', $race) }}">
-                    <x-button type="button" variant="ghost"><x-lucide-pencil class="size-3.5" />Edit</x-button>
-                </a>
+                @if (in_array($status, ['draft', 'lobby'], true))
+                    <a href="{{ route('races.edit', $race) }}">
+                        <x-button type="button" variant="ghost"><x-lucide-pencil class="size-3.5" />Edit</x-button>
+                    </a>
+                @endif
             @endif
             <a href="{{ route('chat.race', $race) }}">
                 <x-button type="button" variant="ghost"><x-lucide-message-square class="size-3.5" />Race chat</x-button>

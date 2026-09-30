@@ -184,12 +184,13 @@ class SettingsTest extends TestCase
         $race = Race::factory()->create([
             'group_id' => $this->kartingCrew()->id,
             'name' => 'Muted Finish',
-            'status' => RaceStatus::Racing->value,
+            'status' => RaceStatus::Draft->value,
             'organizer_id' => 1,
         ]);
 
         $service = app(RaceService::class);
         $service->setParticipants($race, [3, 4]);
+        $race->update(['status' => RaceStatus::Racing->value]);
         $this->assertTrue($service->completeRace($race));
 
         $this->assertSame(0, $muted->unreadNotifications()->count());

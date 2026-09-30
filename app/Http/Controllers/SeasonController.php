@@ -11,6 +11,7 @@ use App\Http\Requests\UpdateSeasonRequest;
 use App\Models\Group;
 use App\Models\ScoringPoint;
 use App\Models\Season;
+use App\Support\StandingsService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -109,6 +110,8 @@ class SeasonController extends Controller
             'awards.team',
             'races' => fn ($query) => $query->orderByPivot('round_number'),
             'races.drivers.profile',
+            'races.entries',
+            'races.penalties',
         ]);
 
         $rounds = $season->races->map(function ($race) {
@@ -140,14 +143,26 @@ class SeasonController extends Controller
             ->first();
 
         $canManage = auth()->user()->can('update', $season);
+        $canDelete = $season->races->isEmpty()
+            && $season->records->isEmpty()
+            && $season->awards->isEmpty();
+
+        $standings = StandingsService::computeStandings(
+            $season->races,
+            StandingsService::scoringFor($season)
+        )['final'];
+        $standingsDrivers = $participatingDrivers->keyBy('id');
 
         return view('championship.show', compact(
             'season',
             'rounds',
             'participatingDrivers',
+            'standings',
+            'standingsDrivers',
             'completedRaces',
             'upcomingRace',
-            'canManage'
+            'canManage',
+            'canDelete'
         ));
     }
 
@@ -180,6 +195,16 @@ class SeasonController extends Controller
     public function destroy(Season $season): RedirectResponse
     {
         $this->authorize('delete', $season);
+
+        $hasHistory = $season->races()->exists()
+            || $season->records()->exists()
+            || $season->awards()->exists();
+
+        abort_if(
+            $hasHistory,
+            422,
+            'This season has races, records, or awards attached; deleting it would erase championship history.'
+        );
 
         $season->delete();
 

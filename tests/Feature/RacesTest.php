@@ -433,4 +433,88 @@ class RacesTest extends TestCase
 
         $this->assertDatabaseMissing('races', ['id' => $race->id]);
     }
+
+    public function test_completed_race_cannot_be_deleted(): void
+    {
+        $user = $this->demoActor();
+        $race = $this->seededRace('Opening Sprint');
+
+        $this->actingAs($user)
+            ->delete(route('races.destroy', $race))
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('races', ['id' => $race->id]);
+    }
+
+    public function test_completed_race_cannot_be_edited(): void
+    {
+        $user = $this->demoActor();
+        $race = $this->seededRace('Opening Sprint');
+
+        $this->actingAs($user)
+            ->patch(route('races.update', $race), [
+                'name' => 'Renamed After Results',
+                'venue_name' => $race->venue_name,
+                'date' => $race->date->format('Y-m-d'),
+                'start_time' => $race->start_time,
+                'format' => $race->format->value,
+                'qualifying_lap_count' => $race->qualifying_lap_count,
+            ])
+            ->assertStatus(422);
+
+        $this->assertNotSame('Renamed After Results', $race->refresh()->name);
+    }
+
+    public function test_completed_race_entries_and_results_cannot_be_mutated(): void
+    {
+        $user = $this->demoActor();
+        $race = $this->seededRace('Opening Sprint');
+        $entry = $race->entries()->firstOrFail();
+        $count = $race->entries()->count();
+        $statusBefore = $entry->status->value;
+
+        $this->actingAs($user)
+            ->post(route('races.entries.set', $race), ['driver_ids' => [$entry->driver_id]])
+            ->assertStatus(422);
+
+        $this->actingAs($user)
+            ->post(route('races.driver-status', ['race' => $race, 'driver' => $entry->driver_id]), ['status' => 'dnf'])
+            ->assertStatus(422);
+
+        $this->assertSame($count, $race->entries()->count());
+        $this->assertSame($statusBefore, $entry->refresh()->status->value);
+    }
+
+    public function test_qualifying_cannot_be_recorded_after_grid_lock(): void
+    {
+        $user = $this->demoActor();
+        $race = $this->seededRace('Autumn Sprint');
+        $group = $this->kartingCrewGroup();
+        $driverId = $group->members()->pluck('drivers.id')->first();
+
+        $this->actingAs($user)->post(route('races.lobby.open', $race));
+        $this->post(route('races.entries.set', $race), ['driver_ids' => [$driverId]]);
+        $this->post(route('races.qualifying.start', $race));
+        $this->post(route('races.qualifying.record', $race), [
+            'driver_id' => $driverId, 'action' => 'record', 'time_ms' => 32000,
+        ])->assertRedirect();
+        $this->post(route('races.lock-grid', $race))->assertRedirect();
+
+        $this->post(route('races.qualifying.record', $race), [
+            'driver_id' => $driverId, 'action' => 'record', 'time_ms' => 31000,
+        ])->assertStatus(422);
+    }
+
+    public function test_cancelled_race_can_be_deleted(): void
+    {
+        $user = $this->demoActor();
+        $group = $this->kartingCrewGroup();
+        $race = Race::factory()->create(['group_id' => $group->id, 'status' => 'cancelled']);
+
+        $this->actingAs($user)
+            ->delete(route('races.destroy', $race))
+            ->assertRedirect(route('races'));
+
+        $this->assertDatabaseMissing('races', ['id' => $race->id]);
+    }
 }

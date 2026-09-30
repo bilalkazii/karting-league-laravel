@@ -2,6 +2,16 @@
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
+        <input type="hidden" name="invite" value="{{ $inviteToken ?? '' }}" />
+
+        @unless ($inviteToken ?? null)
+            <div class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-600 dark:text-amber-300">
+                {{ __('Registration is by invitation only. Open your invitation link to create an account.') }}
+            </div>
+        @endunless
+
+        <x-input-error :messages="$errors->get('invite')" class="mb-2" />
+
         <!-- Name -->
         <div>
             <x-input-label for="name" :value="__('Name')" />
@@ -12,7 +22,7 @@
         <!-- Email Address -->
         <div class="mt-4">
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
+            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $inviteEmail ?? null)" required autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 

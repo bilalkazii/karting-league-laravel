@@ -29,7 +29,7 @@
                 <p class="mt-5 text-sm text-[var(--muted)]">Sign in or create an account to accept.</p>
                 <div class="mt-5 flex flex-col gap-2 sm:flex-row">
                     <a href="{{ route('login') }}" class="flex-1"><x-button class="w-full">Sign in</x-button></a>
-                    <a href="{{ route('register') }}" class="flex-1"><x-button variant="secondary" class="w-full">Create account</x-button></a>
+                    <a href="{{ route('register', ['invite' => $token]) }}" class="flex-1"><x-button variant="secondary" class="w-full">Create account</x-button></a>
                 </div>
                 <p class="mt-3 text-[10px] text-[var(--muted)]">You'll return here after signing in to complete joining.</p>
             @endauth
