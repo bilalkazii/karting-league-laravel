@@ -6,7 +6,9 @@ use App\Enums\RaceStatus;
 use App\Enums\SeasonStatus;
 use App\Models\Race;
 use App\Models\RaceEntry;
+use App\Models\RaceEvent;
 use App\Models\Season;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -22,6 +24,7 @@ class DashboardController extends Controller
                 'memberCounts' => [],
                 'stats' => ['started' => 0, 'points' => 0, 'bestQuali' => null],
                 'upcomingRace' => null,
+                'activity' => [],
             ]);
         }
 
@@ -70,6 +73,43 @@ class DashboardController extends Controller
                 'bestQuali' => $bestQuali,
             ],
             'upcomingRace' => $upcomingRace,
+            'activity' => $this->recentActivity($groupIds),
         ]);
+    }
+
+    /**
+     * Bounded, group-scoped feed drawn from real race events. Returns a
+     * presentation-ready shape for the dashboard activity card.
+     *
+     * @return list<array{name: string, time: string, initials: string, color: string, textColor: string}>
+     */
+    private function recentActivity(Collection $groupIds): array
+    {
+        if ($groupIds->isEmpty()) {
+            return [];
+        }
+
+        return RaceEvent::query()
+            ->with(['race.group', 'driver.profile'])
+            ->whereHas('race', fn ($query) => $query->whereIn('group_id', $groupIds))
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get()
+            ->map(function (RaceEvent $event): array {
+                $race = $event->race;
+                $driver = $event->driver;
+                $raceName = $race?->name ?? 'Race';
+                $label = $event->type?->label() ?? 'Race update';
+
+                return [
+                    'name' => $label.' · '.$raceName,
+                    'time' => $event->occurred_at?->diffForHumans() ?? 'Recently',
+                    'initials' => $driver?->nickname ?: mb_strtoupper(mb_substr($raceName, 0, 2)),
+                    'color' => $driver?->avatar_color ?? $race?->group?->logo_color ?? '#3f3f46',
+                    'textColor' => $driver?->avatar_text_color ?? $race?->group?->logo_text_color ?? '#ffffff',
+                ];
+            })
+            ->all();
     }
 }

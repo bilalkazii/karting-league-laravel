@@ -30,7 +30,7 @@ class AppShellTest extends TestCase
     {
         $this->actingAs($this->demoActor());
 
-        foreach (['/groups', '/races', '/championship', '/chat', '/notifications', '/settings', '/race-setup'] as $path) {
+        foreach (['/groups', '/races', '/championship', '/chat', '/notifications', '/settings'] as $path) {
             $this->get($path)->assertOk();
         }
     }

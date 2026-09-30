@@ -1,12 +1,4 @@
 <x-app-layout>
-    @php
-        $activity = [
-            ['name' => 'Umar joined the group', 'time' => '2 hours ago', 'initials' => 'UM', 'color' => 'bg-[#8c6a52]'],
-            ['name' => 'Saturday GP was created', 'time' => 'Yesterday', 'initials' => 'SG', 'color' => 'bg-[#435e6e]'],
-            ['name' => 'Ahmad set a new personal best', 'time' => '2 days ago', 'initials' => 'AH', 'color' => 'bg-[#645c86]'],
-        ];
-    @endphp
-
     <div class="space-y-8">
         <div class="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
@@ -54,19 +46,20 @@
             <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)]">
                 <div class="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
                     <h3 class="text-sm font-bold">Recent activity</h3>
-                    <a href="{{ route('chat') }}" class="text-xs font-semibold text-[var(--red-bright)]">View all</a>
+                    <a href="{{ route('races') }}" class="text-xs font-semibold text-[var(--red-bright)]">View all</a>
                 </div>
                 <div class="space-y-1 p-2">
-                    @foreach ($activity as $item)
+                    @forelse ($activity as $item)
                         <div class="flex items-center gap-3 rounded-lg px-2 py-3 hover:bg-white/[.03]">
-                            <span class="grid size-9 place-items-center rounded-full text-[9px] font-bold {{ $item['color'] }}">{{ $item['initials'] }}</span>
-                            <div>
-                                <p class="text-sm font-medium">{{ $item['name'] }}</p>
+                            <span class="grid size-9 shrink-0 place-items-center rounded-full text-[9px] font-bold" style="background-color: {{ $item['color'] }}; color: {{ $item['textColor'] }}">{{ $item['initials'] }}</span>
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium">{{ $item['name'] }}</p>
                                 <p class="mt-0.5 text-xs text-[var(--muted)]">{{ $item['time'] }}</p>
                             </div>
-                            <x-lucide-chevron-right class="ml-auto size-[15px] text-[var(--muted)]" />
                         </div>
-                    @endforeach
+                    @empty
+                        <p class="px-3 py-4 text-sm text-[var(--muted)]">No race activity yet. Qualifying, results, and penalties will show up here.</p>
+                    @endforelse
                 </div>
             </div>
 

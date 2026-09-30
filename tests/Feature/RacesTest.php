@@ -173,11 +173,23 @@ class RacesTest extends TestCase
             ->assertSee('Set up a race');
     }
 
+    public function test_create_form_exposes_required_qualifying_lap_count_field(): void
+    {
+        $user = $this->demoActor();
+
+        $this->actingAs($user)
+            ->get(route('races.new'))
+            ->assertOk()
+            ->assertSee('Qualifying lap count')
+            ->assertSee('name="qualifying_lap_count"', false);
+    }
+
     public function test_store_creates_draft_race_with_organizer(): void
     {
         $user = $this->demoActor();
         $group = $this->kartingCrewGroup();
 
+        // Payload mirrors exactly the fields rendered by races/create.blade.php.
         $this->actingAs($user)
             ->post(route('races.store'), [
                 'group_id' => $group->id,
@@ -186,15 +198,34 @@ class RacesTest extends TestCase
                 'date' => '2027-01-09',
                 'start_time' => '16:00',
                 'format' => 'sprint',
-                'qualifying_lap_count' => 1,
-                'rules' => 'No contact.',
+                'qualifying_lap_count' => 2,
             ])
             ->assertRedirect();
 
         $race = Race::where('name', 'Winter Classic')->firstOrFail();
         $this->assertSame('draft', $race->status->value);
         $this->assertSame($user->driver->id, $race->organizer_id);
-        $this->assertSame('No contact.', $race->rules);
+        $this->assertSame(2, $race->qualifying_lap_count);
+        $this->assertSame('', $race->rules);
+    }
+
+    public function test_store_requires_qualifying_lap_count(): void
+    {
+        $user = $this->demoActor();
+        $group = $this->kartingCrewGroup();
+
+        $this->actingAs($user)
+            ->post(route('races.store'), [
+                'group_id' => $group->id,
+                'name' => 'No Laps GP',
+                'venue_name' => 'Nashik Karting Arena',
+                'date' => '2027-01-09',
+                'start_time' => '16:00',
+                'format' => 'sprint',
+            ])
+            ->assertSessionHasErrors('qualifying_lap_count');
+
+        $this->assertDatabaseMissing('races', ['name' => 'No Laps GP']);
     }
 
     public function test_store_requires_organizer_role(): void

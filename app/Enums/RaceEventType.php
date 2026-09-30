@@ -27,4 +27,33 @@ enum RaceEventType: string
     case Complete = 'complete';
     case Note = 'note';
     case StatusChange = 'status_change';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::QualifyingStart => 'Qualifying started',
+            self::QualifyingStop => 'Qualifying lap recorded',
+            self::QualifyingInvalid => 'Qualifying lap invalidated',
+            self::QualifyingRestore => 'Qualifying lap restored',
+            self::QualifyingReset => 'Qualifying lap cleared',
+            self::QualifyingCorrected => 'Qualifying time corrected',
+            self::QualifyingReplace => 'Qualifying lap improved',
+            self::QualifyingPromoted => 'Qualifying promoted',
+            self::Ready => 'Driver marked ready',
+            self::NotReady => 'Driver no longer ready',
+            self::RaceStart => 'Race started',
+            self::RaceFinish => 'Driver finished',
+            self::Dnf => 'Driver did not finish',
+            self::Dns => 'Driver did not start',
+            self::Retired => 'Driver retired',
+            self::Withdrawn => 'Driver withdrawn',
+            self::Penalty => 'Penalty issued',
+            self::PenaltyCancelled => 'Penalty cancelled',
+            self::GridChange => 'Grid position changed',
+            self::GridPenalty => 'Grid penalty applied',
+            self::Complete => 'Race completed',
+            self::Note => 'Note added',
+            self::StatusChange => 'Race status changed',
+        };
+    }
 }

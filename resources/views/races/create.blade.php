@@ -104,22 +104,41 @@
                         </div>
                     </div>
 
-                    <div class="space-y-2">
-                        <label for="race-format" class="text-xs font-semibold">Format <span class="text-[var(--red)]">*</span></label>
-                        <select
-                            id="race-format"
-                            name="format"
-                            class="w-full rounded-lg border bg-[var(--panel-raised)] px-4 py-3 text-sm text-white outline-none focus:border-[var(--red)] {{ $errors->has('format') ? 'border-[var(--red)]' : 'border-[var(--line)]' }}"
-                        >
-                            <option value="sprint" @selected(old('format', 'sprint') === 'sprint')>Sprint — short shake-down, one qualifying lap</option>
-                            <option value="feature" @selected(old('format') === 'feature')>Feature — main event of the day</option>
-                            <option value="custom" @selected(old('format') === 'custom')>Custom — fully custom rules</option>
-                        </select>
-                        @error('format')
-                            <p class="flex items-center gap-1 text-[10px] text-[var(--red-bright)]"><x-lucide-alert-circle class="size-[11px]" />{{ $message }}</p>
-                        @enderror
-                        <p class="text-[10px] text-[var(--muted)]">V1 measures one official qualifying lap per driver.</p>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label for="race-format" class="text-xs font-semibold">Format <span class="text-[var(--red)]">*</span></label>
+                            <select
+                                id="race-format"
+                                name="format"
+                                required
+                                class="w-full rounded-lg border bg-[var(--panel-raised)] px-4 py-3 text-sm text-white outline-none focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] {{ $errors->has('format') ? 'border-[var(--red)]' : 'border-[var(--line)]' }}"
+                            >
+                                <option value="sprint" @selected(old('format', 'sprint') === 'sprint')>Sprint — short shake-down, one qualifying lap</option>
+                                <option value="feature" @selected(old('format') === 'feature')>Feature — main event of the day</option>
+                                <option value="custom" @selected(old('format') === 'custom')>Custom — fully custom rules</option>
+                            </select>
+                            @error('format')
+                                <p class="flex items-center gap-1 text-[10px] text-[var(--red-bright)]"><x-lucide-alert-circle class="size-[11px]" />{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="space-y-2">
+                            <label for="race-laps" class="text-xs font-semibold">Qualifying lap count <span class="text-[var(--red)]">*</span></label>
+                            <input
+                                id="race-laps"
+                                type="number"
+                                name="qualifying_lap_count"
+                                min="1"
+                                max="10"
+                                required
+                                value="{{ old('qualifying_lap_count', 1) }}"
+                                class="w-full rounded-lg border bg-[var(--panel-raised)] px-4 py-3 text-sm text-white outline-none focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] {{ $errors->has('qualifying_lap_count') ? 'border-[var(--red)]' : 'border-[var(--line)]' }}"
+                            />
+                            @error('qualifying_lap_count')
+                                <p class="flex items-center gap-1 text-[10px] text-[var(--red-bright)]"><x-lucide-alert-circle class="size-[11px]" />{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
+                    <p class="text-[10px] text-[var(--muted)]">V1 measures official qualifying laps per driver.</p>
 
                     <div class="flex items-center gap-3 pt-2">
                         <x-button type="submit">

@@ -76,7 +76,7 @@ model has no global admin concept; this distinction is documented.
 | `/chat` | Deferred (no schema). Removed from nav, view kept with clear message. |
 | `/notifications` | Replaced by a real notification listing page. |
 | `/settings` | Deferred (no schema beyond `/account`). Removed from nav, view kept with clear message. |
-| `/race-setup` | Genuinely unfinished dedicated feature; kept as placeholder, not in nav. |
+| `/race-setup` | Genuinely unfinished dedicated feature; kept as placeholder, not in nav. Removed in Phase 5j as redundant with the per-race setup workflow (`docs/phase-5j-hardening.md`). |
 
 Navigation currently links `/chat` from the sidebar (with a hardcoded unread badge
 "3"), bottom nav, and group tabs, and links `/settings` from the sidebar and group

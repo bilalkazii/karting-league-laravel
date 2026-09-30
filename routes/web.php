@@ -83,7 +83,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/chat/messages/{message}', [ChatController::class, 'destroy'])->name('chat.messages.destroy');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
-    Route::view('/race-setup', 'feature-placeholder')->name('race-setup');
 
     Route::get('/profile', function () {
         $driver = auth()->user()?->driver;
