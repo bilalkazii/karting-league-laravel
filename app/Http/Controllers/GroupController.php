@@ -15,6 +15,7 @@ use App\Models\Season;
 use App\Models\Team;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\Rule;
 
 class GroupController extends Controller
@@ -171,13 +172,28 @@ class GroupController extends Controller
             ->orderBy('nickname')
             ->get();
 
+        $pendingInvites = $isOrganizer
+            ? $group->invites()->pending()->latest()->get()
+            : collect();
+
+        $inviteUrl = null;
+        if ($encrypted = session('invite_url')) {
+            try {
+                $inviteUrl = Crypt::decryptString($encrypted);
+            } catch (\Throwable) {
+                $inviteUrl = null;
+            }
+        }
+
         return view('groups.members', compact(
             'group',
             'members',
             'memberCount',
             'isOrganizer',
             'canManageRoles',
-            'availableDrivers'
+            'availableDrivers',
+            'pendingInvites',
+            'inviteUrl'
         ));
     }
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\InviteController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
@@ -30,6 +31,14 @@ Route::middleware('auth')->group(function () {
     Route::patch('/groups/{group}/members/{driver}/role', [GroupController::class, 'updateMemberRole'])->name('groups.members.role');
     Route::delete('/groups/{group}/members/{driver}', [GroupController::class, 'removeMember'])->name('groups.members.destroy');
     Route::post('/groups/{group}/availability', [GroupController::class, 'updateAvailability'])->name('groups.availability.update');
+
+    Route::post('/groups/{group}/invites', [InviteController::class, 'store'])
+        ->middleware('throttle:invite-create')
+        ->name('groups.invites.store');
+    Route::delete('/groups/{group}/invites/{invite}', [InviteController::class, 'destroy'])
+        ->name('groups.invites.destroy');
+    Route::post('/groups/{group}/invites/{invite}/regenerate', [InviteController::class, 'regenerate'])
+        ->name('groups.invites.regenerate');
 
     Route::get('/races', [RaceController::class, 'index'])->name('races');
     Route::get('/races/new', [RaceController::class, 'create'])->name('races.new');
@@ -91,6 +100,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/account', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/account', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/account', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::post('/invites/{token}/accept', [InviteController::class, 'accept'])
+        ->middleware('throttle:invite-accept')
+        ->name('invites.accept');
 });
+
+Route::get('/invites/{token}', [InviteController::class, 'show'])
+    ->middleware('throttle:invite-show')
+    ->name('invites.show');
 
 require __DIR__.'/auth.php';

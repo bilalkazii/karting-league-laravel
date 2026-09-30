@@ -68,4 +68,9 @@ class Group extends Model
     {
         return $this->hasMany(ChatMessage::class);
     }
+
+    public function invites(): HasMany
+    {
+        return $this->hasMany(Invite::class);
+    }
 }
