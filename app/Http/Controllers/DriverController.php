@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DriverProfileVisibility;
 use App\Enums\RaceDriverStatus;
 use App\Enums\RacePenaltyStatus;
 use App\Http\Requests\UpdateDriverProfileRequest;
@@ -21,6 +22,14 @@ class DriverController extends Controller
             ? $viewer->groups()->pluck('groups.id')->all()
             : [];
 
+        $hiddenDriverIds = Driver::query()
+            ->when($viewer, fn ($query) => $query->where('id', '!=', $viewer->id))
+            ->whereHas('profile.user.preferences', fn ($preferences) => $preferences
+                ->where('key', DriverProfileVisibility::preferenceKey())
+                ->where('value', DriverProfileVisibility::Members->value))
+            ->whereDoesntHave('groups', fn ($groups) => $groups->whereIn('groups.id', $viewerGroupIds))
+            ->pluck('id');
+
         $drivers = Driver::query()
             ->with('profile')
             ->with(['groups' => fn ($q) => $q->whereIn('groups.id', $viewerGroupIds)])
@@ -35,6 +44,7 @@ class DriverController extends Controller
                         ));
                 });
             })
+            ->whereNotIn('id', $hiddenDriverIds)
             ->orderByDesc('rating')
             ->paginate(12)
             ->withQueryString();
@@ -44,6 +54,8 @@ class DriverController extends Controller
 
     public function show(Driver $driver)
     {
+        $this->authorize('view', $driver);
+
         $viewer = auth()->user()?->driver;
         $isOwnProfile = $viewer !== null && $viewer->id === $driver->id;
 

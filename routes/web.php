@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceSessionController;
 use App\Http\Controllers\SeasonController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -71,7 +72,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/chat/races/{race}', [ChatController::class, 'race'])->name('chat.race');
     Route::post('/chat/races/{race}', [ChatController::class, 'storeRace'])->name('chat.race.send');
     Route::delete('/chat/messages/{message}', [ChatController::class, 'destroy'])->name('chat.messages.destroy');
-    Route::view('/settings', 'feature-placeholder')->name('settings');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::view('/race-setup', 'feature-placeholder')->name('race-setup');
 
     Route::get('/profile', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationType;
 use App\Enums\QualifyingStatus;
 use App\Enums\RaceDriverStatus;
 use App\Enums\RaceEventType;
@@ -286,6 +287,9 @@ class RaceService
         $this->event($race, RaceEventType::Penalty, $driverId, ['seconds' => $seconds, 'reason' => trim($reason)]);
         $users = $this->driverUsers($race->entries()->firstWhere('driver_id', $driverId)->driver);
         foreach ($users as $user) {
+            if (! $user->notificationEnabled(NotificationType::PenaltyIssued)) {
+                continue;
+            }
             $user->notify(new PenaltyIssued($race, $seconds, trim($reason)));
         }
 
@@ -353,8 +357,13 @@ class RaceService
 
     private function notifyRaceUsers(iterable $drivers, string $notificationClass, Race $race): void
     {
+        $type = NotificationType::fromNotificationClass($notificationClass);
+
         foreach ($drivers as $driver) {
             foreach ($this->driverUsers($driver) as $user) {
+                if ($type !== null && ! $user->notificationEnabled($type)) {
+                    continue;
+                }
                 $user->notify(new $notificationClass($race));
             }
         }

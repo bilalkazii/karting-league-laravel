@@ -59,13 +59,6 @@ class NotificationTest extends TestCase
             ->assertSee('Mark all as read');
     }
 
-    public function test_guest_route_missing_dot_uses_existing_placeholder(): void
-    {
-        $user = $this->demoActor();
-
-        $this->actingAs($user)->get(route('settings'))->assertOk()->assertSee('deferred');
-    }
-
     public function test_mark_read_marks_single_notification(): void
     {
         $user = $this->demoActor();

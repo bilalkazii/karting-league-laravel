@@ -67,6 +67,9 @@
             <a x-on:click="open = false" href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
                 <x-lucide-settings class="size-[18px]" />Account
             </a>
+            <a x-on:click="open = false" href="{{ route('settings') }}" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white">
+                <x-lucide-sliders-horizontal class="size-[18px]" />Settings
+            </a>
             @if ($driver)
                 <div class="mt-5 flex items-center gap-3 border-t border-[var(--line)] px-3 pt-5">
                     <div class="grid size-8 place-items-center rounded-full text-xs font-bold" style="background-color: {{ $driver->avatar_color }}; color: {{ $driver->avatar_text_color }}">
