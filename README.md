@@ -1,4 +1,4 @@
-﻿# Karting League
+# Karting League
 
 A private web app for running a karting group's racing league â€” groups, drivers,
 teams, race sessions with manual qualifying, and a full championship with
@@ -260,4 +260,8 @@ procedure, and the PostgreSQLâ†’MySQL migration path, is in
 - Three named rate limiters guard the invite routes (20/min/user to create,
   30/min/IP to view, 5/min/user to accept).
 - The seeders no-op in production, enforced by a test.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
