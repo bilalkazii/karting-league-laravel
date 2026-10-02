@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('season_id')->constrained('seasons')->cascadeOnDelete();
             $table->string('type');
             $table->string('label');
-            $table->text('description')->default('');
+            $table->text('description');
             $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
             $table->foreignId('team_id')->nullable()->constrained('teams')->nullOnDelete();
             $table->foreignId('race_id')->nullable()->constrained('races')->nullOnDelete();

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('status')->default('draft');
             $table->foreignId('organizer_id')->constrained('drivers');
             $table->unsignedInteger('qualifying_lap_count')->default(1);
-            $table->text('rules')->default('');
+            $table->text('rules');
             $table->timestamps();
         });
     }

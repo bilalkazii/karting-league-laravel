@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\Profile;
 use App\Models\Season;
 use App\Models\User;
+use App\Support\StandingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -194,9 +195,56 @@ class SeasonsTest extends TestCase
         $season = Season::where('name', 'Winter Cup 2027')->firstOrFail();
         $this->assertSame('draft', $season->status->value);
 
-        $this->assertSame(1, $season->scoring->pole_position_points);
+        // A new season awards points by finishing position only, so neither a
+        // pole nor a fastest lap carries a bonus.
+        $this->assertSame(0, $season->scoring->pole_position_points);
+        $this->assertSame(0, $season->scoring->fastest_lap_points);
         $this->assertSame(25, $season->scoringPoints()->where('position', 1)->value('points'));
         $this->assertSame(8, $season->scoringPoints()->count());
+    }
+
+    public function test_a_new_season_awards_no_pole_position_bonus(): void
+    {
+        $user = $this->demoActor();
+        $group = $user->driver->groups()->where('name', 'Karting Crew')->firstOrFail();
+
+        $this->actingAs($user)
+            ->post(route('seasons.store'), [
+                'group_id' => $group->id,
+                'name' => 'Spring Cup 2027',
+                'status' => 'draft',
+                'start_date' => '2027-04-01',
+                'end_date' => '2027-06-01',
+            ])
+            ->assertRedirect();
+
+        $season = Season::where('name', 'Spring Cup 2027')->firstOrFail();
+
+        $this->assertSame(0, $season->scoring->pole_position_points);
+        $this->assertSame(0, StandingsService::scoringFor($season)['pole_position_points']);
+
+        // The bonus is genuinely absent rather than merely stored as zero: the
+        // driver who takes pole scores exactly what their finishing position is
+        // worth, with nothing added on top.
+        $race = $this->seededSeason()->races()->where('status', 'completed')->firstOrFail();
+        $season->races()->attach($race->id, ['round_number' => 1]);
+
+        $points = StandingsService::computeRacePoints(
+            StandingsService::raceEntries($race->entries()->get()),
+            StandingsService::scoringFor($season->fresh()),
+        );
+
+        $this->assertNotNull($points['pole_driver_id']);
+
+        $poleRow = collect($points['entries'])
+            ->firstWhere('driver_id', $points['pole_driver_id']);
+
+        $this->assertSame(0, $poleRow['pole_points']);
+        $this->assertSame($poleRow['base_points'], $poleRow['points']);
+
+        foreach ($points['entries'] as $row) {
+            $this->assertSame(0, $row['pole_points']);
+        }
     }
 
     public function test_store_requires_organizer_role(): void

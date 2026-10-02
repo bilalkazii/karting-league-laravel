@@ -1,58 +1,263 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿# Karting League
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A private web app for running a karting group's racing league â€” groups, drivers,
+teams, race sessions with manual qualifying, and a full championship with
+configurable points scoring.
 
-## About Laravel
+Laravel 13 rewrite of the original Next.js prototype. It removes the
+Supabase/PostgREST/Row-Level-Security surface entirely in favour of Eloquent,
+first-class policies, and a relational database you can actually administer.
+See [docs/](docs/) for the phase-by-phase build record and
+[docs/production-deployment.md](docs/production-deployment.md) for deployment.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+V1 is deliberately **software-only**: qualifying and race timing are entered
+**manually** by a human with a stopwatch. There is deliberately no hardware
+timing, lap counting, RFID, camera timing, radio, AI commentary, or safety-car
+system.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Features
 
-## Learning Laravel
+**Groups & membership**
+- Private karting groups with `admin` / `organizer` / `member` roles
+- **Shareable invitations** â€” create, rotate, revoke. Tokens are generated with
+  `random_bytes(32)`, stored **SHA-256 hashed**, and compared with
+  `hash_equals()`. A transaction flips the invite to `accepted` so it is
+  single-use, and an unknown token returns 404 so it cannot be used to probe
+  other groups.
+- Member role changes, availability, driver profile visibility preference
+- **CSV driver import** with a two-step preview â†’ confirm flow. Names are
+  matched by token-overlap and reordered-token similarity into three confidence
+  bands, so an organizer reviews the ambiguous rows instead of guessing.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+**Drivers & teams**
+- Racing identity with rating, badges and aggregate stats
+- Teams with full CRUD and member reassignment
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Race lifecycle** â€” a server-side state machine in `app/Services/RaceService`:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+draft â†’ lobby â†’ qualifying â†’ grid â†’ racing â†’ completed
+                                       â†˜ cancelled
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+- Lobby: check-in, ready toggles, participant set
+- Qualifying: manual time entry with invalid / restore / corrected / replace
+- Grid: computed from qualifying, with grid penalties and manual override
+- Race control: finish, DNF, DNS, retire, withdraw, per-driver status
+- Penalties: **informational only** â€” recorded and reported, never silently
+  reordering a finish
+- Results: classification, podium, custom round `event_label`
+- Audit timeline: every state change written to an append-only `race_events` table
 
-## Contributing
+**Championships**
+- Seasons with a configurable points table and scheduled rounds
+  (`season_races` round numbers)
+- Automatic or custom scoring: points by finishing position, pole points,
+  fastest-lap points, participation / DNF / DNS points
+- Penalty point adjustment, **off by default**
+- Driver standings, team standings, position trend, 13 award types, season records
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Social & account**
+- Group and race chat threads with unread watermarks and badges
+- Database notifications (`RaceOpened`, `RaceCompleted`, `PenaltyIssued`) with
+  per-user preferences
+- Settings and profile screens
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Tech stack
 
-## Security Vulnerabilities
+| Layer | Choice |
+| --- | --- |
+| Framework | Laravel 13.32 |
+| Language | PHP 8.3+ (uses PHP 8 attributes) |
+| Rendering | Blade + Alpine.js 3.4 (no SPA) |
+| CSS | Tailwind CSS v4 via `@tailwindcss/vite`, Vite 8 |
+| Auth | Laravel Breeze (session, email/password), **invitation-only registration** |
+| Authorization | 5 policies: `Group`, `Driver`, `Race`, `Season`, `Team` |
+| Database | SQLite by default; MySQL / MariaDB configured for production |
+| Testing | PHPUnit 12.5 â€” 31 test files, `Unit` + `Feature` suites |
+| Formatting | Laravel Pint 1.32 |
+| Icons | `fuzzyfox/lucide-for-laravel` |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Architecture
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```
+app/
+  Enums/            16 backed enums â€” the domain vocabulary
+                    (RaceStatus, RaceFormat, GroupRole, AwardType, ...)
+  Http/Controllers/ 13 domain controllers + 9 Breeze auth controllers
+  Http/Requests/    18 FormRequest classes â€” all validation lives here
+  Models/           22 Eloquent models
+  Policies/         5 authorization policies
+  Services/         RaceService (session state machine)
+                    StandingsService (scoring + standings engine)
+                    ChatService, DriverImportService, InviteService
+  Support/          RaceUtils, DriverCsvParser, DriverCsvRow
+  Listeners/        CreateDriverIdentity
+  Mail/, Notifications/
+routes/
+  web.php           ~75 named routes
+  auth.php          Breeze
+resources/views/    100 Blade templates
+database/
+  migrations/       25 migrations
+  seeders/          DemoDataSeeder, ChampionshipContentSeeder (both
+                    hard-refuse to run when APP_ENV=production)
+tests/              31 files â€” Unit, Feature, Auth
+docs/               phase plans, audits, production runbooks
+```
+
+### Design decisions
+
+**The state machine and the scoring engine are plain services, not controllers.**
+`RaceService` and `StandingsService` are the two largest classes in the app
+(~19 KB and ~21 KB) and they hold the only non-trivial logic. Controllers stay
+thin, which is what makes `tests/Feature/` readable.
+
+**No API layer.** This is a server-rendered Blade application with form POSTs.
+There is no JSON API and no separate frontend to keep in sync.
+
+**Derived data is not stored.** Stats, badges, previews, results, standings and
+membership summaries are all computed at read time by `StandingsService`.
+
+**Invitations are hashed, not stored.** Only the SHA-256 digest of an invite
+token is persisted, so a database leak does not yield usable invite links.
+
+---
+
+## Installation
+
+Requires **PHP 8.3+** with `ctype`, `filter`, `hash`, `mbstring`, `openssl` and
+`tokenizer`, plus **Composer** and **Node.js 20+**.
+
+```bash
+git clone https://github.com/<owner>/karting-league-laravel.git
+cd karting-league-laravel
+composer setup
+```
+
+`composer setup` runs `composer install`, copies `.env.example` to `.env`,
+generates an `APP_KEY`, runs migrations, then `npm install && npm run build`.
+
+## Configuration
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+The defaults in `.env.example` are a working local development setup:
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `APP_KEY` | *(empty â€” must generate)* | Encrypts cookies and sessions |
+| `APP_ENV` | `local` | |
+| `APP_DEBUG` | `true` | **Must be `false` in production** |
+| `DB_CONNECTION` | `sqlite` | Switch to `mysql` for production |
+| `DB_HOST` / `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | commented out | Fill in for MySQL |
+| `SESSION_SECURE_COOKIE` | *(unset)* | **Set `true` in production** or cookies go out over plain HTTP |
+| `SESSION_ENCRYPT` | `false` | Consider `true` in production |
+| `CACHE_STORE` / `QUEUE_CONNECTION` / `SESSION_DRIVER` | `database` | Shared-hosting friendly â€” no Redis required |
+| `MAIL_MAILER` | `log` | Mail is written to the log, not sent |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_BUCKET` | *(empty)* | Only needed for S3 file storage |
+
+Never commit `.env`. Never reuse the local `APP_KEY` in staging or production â€”
+`docs/production-deployment.md` explains why it must be stable per environment
+and different across environments.
+
+## Running locally
+
+```bash
+composer dev
+```
+
+`artisan dev` runs the PHP server, the queue worker, the log tailer, and Vite
+together. Then open <http://localhost:8000>.
+
+Or run the pieces separately:
+
+```bash
+php artisan serve
+npm run dev
+```
+
+### Demo account
+
+`DemoDataSeeder` seeds a full championship dataset and creates
+`demo@karting.app`. **The seeder refuses to run when `APP_ENV=production`** â€”
+this is enforced by `tests/Feature/SeederGuardTest.php`. Demo credentials are
+local-only; never reuse the password anywhere real.
+
+## Testing
+
+```bash
+composer test
+# or
+php artisan test
+```
+
+The suite runs against an **in-memory SQLite** database with the cache, session
+and queue drivers swapped to `array`, so it never touches your development
+database.
+
+```bash
+./vendor/bin/pint              # format
+./vendor/bin/pint --test       # check formatting without writing
+```
+
+## Building for production
+
+```bash
+composer install --no-dev --optimize-autoloader
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan migrate --force
+npm ci && npm run build
+```
+
+Point the web server document root at `public/`. The full checklist, including
+the `SESSION_SECURE_COOKIE` and `APP_DEBUG` requirements, the backup and restore
+procedure, and the PostgreSQLâ†’MySQL migration path, is in
+[docs/production-deployment.md](docs/production-deployment.md) and
+[docs/production-backup-and-restore.md](docs/production-backup-and-restore.md).
+
+---
+
+## Project structure
+
+| Path | Contents |
+| --- | --- |
+| `app/Enums/` | 16 backed enums defining the domain vocabulary |
+| `app/Http/Controllers/` | Domain + Breeze auth controllers |
+| `app/Http/Requests/` | 18 FormRequest validation classes |
+| `app/Models/` | 22 Eloquent models |
+| `app/Policies/` | Group, Driver, Race, Season, Team authorization |
+| `app/Services/` | Race state machine, standings engine, chat, import, invites |
+| `app/Support/` | Race timing/grid utilities, CSV name matching |
+| `resources/views/` | 100 Blade templates |
+| `database/` | 25 migrations, 3 seeders, 9 factories, SQLite dev DB (gitignored) |
+| `tests/` | 31 PHPUnit test files |
+| `docs/` | Phase plans and audits, production runbooks |
+
+---
+
+## Security notes
+
+- `.env`, `vendor/`, `node_modules/`, `database/database.sqlite`,
+  `storage/framework/`, `public/build/` and `bootstrap/cache/` are all
+  gitignored.
+- Invite tokens are stored only as SHA-256 digests.
+- Passwords are bcrypt-hashed; the `User` model carries a `hashed` cast and
+  `#[Hidden]` on `password` / `remember_token`.
+- CSRF meta tag on both layouts, session token regenerated on login and on
+  profile update.
+- Three named rate limiters guard the invite routes (20/min/user to create,
+  30/min/IP to view, 5/min/user to accept).
+- The seeders no-op in production, enforced by a test.
+

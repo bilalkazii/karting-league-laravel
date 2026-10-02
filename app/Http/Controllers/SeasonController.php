@@ -13,6 +13,7 @@ use App\Models\Group;
 use App\Models\Race;
 use App\Models\ScoringPoint;
 use App\Models\Season;
+use App\Models\Team;
 use App\Support\StandingsService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -152,11 +153,22 @@ class SeasonController extends Controller
             && $season->records->isEmpty()
             && $season->awards->isEmpty();
 
-        $standings = StandingsService::computeStandings(
-            $season->races,
-            StandingsService::scoringFor($season)
-        )['final'];
+        $scoring = StandingsService::scoringFor($season);
+
+        $standings = StandingsService::computeStandings($season->races, $scoring)['final'];
         $standingsDrivers = $participatingDrivers->keyBy('id');
+
+        // One leaderboard column per scored event, so each row's total can be
+        // reconciled against the underlying results.
+        $events = StandingsService::eventBreakdown($season->races, $scoring);
+        $progress = StandingsService::progress($season->races);
+
+        // Constructors' standings: sum of each team's members' season points.
+        $seasonTeams = Team::where('group_id', $season->group_id)
+            ->with('members.profile')
+            ->orderBy('name')
+            ->get();
+        $teamStandings = StandingsService::teamStandings($seasonTeams, $standings);
 
         $eligibleRaces = $canManage
             ? Race::query()
@@ -178,7 +190,10 @@ class SeasonController extends Controller
             'upcomingRace',
             'canManage',
             'canDelete',
-            'eligibleRaces'
+            'eligibleRaces',
+            'events',
+            'progress',
+            'teamStandings'
         ));
     }
 
@@ -271,9 +286,11 @@ class SeasonController extends Controller
 
     private function attachDefaultScoring(Season $season): void
     {
+        // Points are awarded by finishing position only: a new season gets no
+        // pole-position bonus and no fastest-lap bonus.
         $season->scoring()->create([
             'mode' => ScoringMode::Automatic,
-            'pole_position_points' => 1,
+            'pole_position_points' => 0,
             'fastest_lap_points' => 0,
             'participation_points' => 0,
             'dnf_points' => 0,

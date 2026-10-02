@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
             $table->string('type');
             $table->timestamp('occurred_at')->nullable();
-            $table->json('payload')->default('{}');
+            $table->json('payload');
         });
     }
 

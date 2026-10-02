@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('race_id')->constrained('races')->cascadeOnDelete();
             $table->foreignId('driver_id')->constrained('drivers')->cascadeOnDelete();
             $table->integer('seconds')->default(0);
-            $table->text('reason')->default('');
+            $table->text('reason');
             $table->foreignId('issued_by')->constrained('drivers');
             $table->string('status')->default('issued');
             $table->timestamps();

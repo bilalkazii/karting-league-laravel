@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('groups', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->text('description')->default('');
+            $table->text('description');
             $table->string('logo_initials')->default('');
             $table->string('logo_color')->default('#e11d48');
             $table->string('logo_text_color')->default('#ffffff');

@@ -85,20 +85,35 @@
         <section class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Standings</h2>
-                <span class="text-[10px] text-[var(--muted)]">{{ $completedRaces }} {{ \Illuminate\Support\Str::plural('race', $completedRaces) }} scored</span>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[var(--muted)]">
+                    <span>{{ $completedRaces }} {{ \Illuminate\Support\Str::plural('race', $completedRaces) }} scored</span>
+                    @if ($progress['remaining'] > 0)
+                        <span class="text-[var(--red-bright)]">{{ $progress['remaining'] }} remaining</span>
+                    @endif
+                    @if ($progress['final_race_date'])
+                        <span>
+                            Final {{ $progress['final_race_date']->format('d M Y') }}
+                            <span class="opacity-70">&middot; {{ $progress['final_race']?->name }}</span>
+                        </span>
+                    @endif
+                </div>
             </div>
 
             @if (empty($standings))
                 <x-empty-state title="No standings yet" description="Standings appear once races in this season are completed." />
             @else
-                <div class="overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--panel)]">
+                {{-- Desktop: full scoreboard with one column per event. --}}
+                <div class="hidden overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--panel)] md:block">
                     <table class="w-full text-left text-sm">
                         <caption class="sr-only">Championship standings for {{ $season->name }}</caption>
                         <thead>
                             <tr class="border-b border-[var(--line)] text-[10px] uppercase tracking-widest text-[var(--muted)]">
-                                <th scope="col" class="px-4 py-3">Pos</th>
+                                <th scope="col" class="w-14 px-4 py-3">Pos</th>
                                 <th scope="col" class="px-4 py-3">Driver</th>
-                                <th scope="col" class="px-4 py-3 text-right">Points</th>
+                                @foreach ($events as $event)
+                                    @include('championship.partials.event-column-header', ['event' => $event])
+                                @endforeach
+                                <th scope="col" class="border-l border-[var(--line)] px-4 py-3 text-right">Total</th>
                                 <th scope="col" class="px-4 py-3 text-right">Gap</th>
                                 <th scope="col" class="px-4 py-3 text-right">Wins</th>
                                 <th scope="col" class="px-4 py-3 text-right">Podiums</th>
@@ -108,21 +123,32 @@
                         <tbody class="divide-y divide-[var(--line)]/60">
                             @foreach ($standings as $row)
                                 @php $driver = $standingsDrivers[$row['driver_id']] ?? null; @endphp
-                                <tr>
+                                <tr @class(['bg-[var(--red)]/[.05]' => $row['position'] === 1])>
                                     <td class="px-4 py-3">
                                         <span class="grid size-7 place-items-center rounded-lg border {{ $row['position'] === 1 ? 'border-[var(--red)]/40 bg-[var(--red)]/10 font-black text-[var(--red-bright)]' : 'border-[var(--line)] bg-white/[.03] font-mono text-xs' }}">{{ $row['position'] }}</span>
                                     </td>
                                     <td class="px-4 py-3">
                                         @if ($driver)
-                                            <a href="{{ route('drivers.show', $driver) }}" class="flex items-center gap-2.5 hover:text-white">
-                                                <x-driver-avatar size="sm" :color="$driver->avatar_color" :textColor="$driver->avatar_text_color" :initials="$driver->nickname ?: mb_substr($driver->profile?->full_name ?? '?', 0, 2)" />
-                                                <span class="font-semibold">{{ $driver->display_name }}</span>
+                                            <a href="{{ route('drivers.show', $driver) }}" class="flex min-w-0 items-center gap-2.5 hover:text-white">
+                                                <x-driver-avatar size="sm" :color="$driver->avatar_color" :textColor="$driver->avatar_text_color" :initials="$driver->nickname ?: mb_strtoupper(mb_substr($driver->profile?->full_name ?? '?', 0, 2))" />
+                                                <span class="min-w-0">
+                                                    <span class="block truncate font-semibold">{{ $driver->profile?->full_name ?? 'Driver #'.$driver->id }}</span>
+                                                    <span class="block truncate text-[10px] font-normal text-[var(--muted)]">
+                                                        {{ $driver->nickname }}
+                                                        @if ($row['tied'])
+                                                            <span class="ml-1 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest">Tied</span>
+                                                        @endif
+                                                    </span>
+                                                </span>
                                             </a>
                                         @else
                                             <span class="text-[var(--muted)]">Driver #{{ $row['driver_id'] }}</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 text-right font-mono font-bold text-white">{{ $row['points'] }}</td>
+                                    @foreach ($events as $event)
+                                        @include('championship.partials.event-column-cell', ['event' => $event, 'driverId' => $row['driver_id']])
+                                    @endforeach
+                                    <td class="border-l border-[var(--line)] px-4 py-3 text-right font-mono text-base font-black text-white">{{ $row['points'] }}</td>
                                     <td class="px-4 py-3 text-right font-mono text-xs text-[var(--muted)]">{{ $row['position'] === 1 ? '—' : '+'.$row['points_gap'] }}</td>
                                     <td class="px-4 py-3 text-right font-mono text-xs">{{ $row['wins'] }}</td>
                                     <td class="px-4 py-3 text-right font-mono text-xs">{{ $row['podiums'] }}</td>
@@ -132,8 +158,125 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Mobile: stacked cards, same per-event data. --}}
+                <ul class="space-y-3 md:hidden">
+                    @foreach ($standings as $row)
+                        @php $driver = $standingsDrivers[$row['driver_id']] ?? null; @endphp
+                        <li @class([
+                            'rounded-xl border bg-[var(--panel)] p-4',
+                            'border-[var(--red)]/35' => $row['position'] === 1,
+                            'border-[var(--line)]' => $row['position'] !== 1,
+                        ])>
+                            <div class="flex items-center gap-3">
+                                <span class="grid size-8 shrink-0 place-items-center rounded-lg border {{ $row['position'] === 1 ? 'border-[var(--red)]/40 bg-[var(--red)]/10 font-black text-[var(--red-bright)]' : 'border-[var(--line)] bg-white/[.03] font-mono text-xs' }}">{{ $row['position'] }}</span>
+                                @if ($driver)
+                                    <a href="{{ route('drivers.show', $driver) }}" class="flex min-w-0 flex-1 items-center gap-2.5">
+                                        <x-driver-avatar size="sm" :color="$driver->avatar_color" :textColor="$driver->avatar_text_color" :initials="$driver->nickname ?: mb_strtoupper(mb_substr($driver->profile?->full_name ?? '?', 0, 2))" />
+                                        <span class="min-w-0">
+                                            <span class="block truncate font-semibold">{{ $driver->profile?->full_name ?? 'Driver #'.$driver->id }}</span>
+                                            @if ($driver->nickname || $row['tied'])
+                                                <span class="block truncate text-[10px] font-normal text-[var(--muted)]">
+                                                    {{ $driver->nickname }}
+                                                    @if ($row['tied'])
+                                                        <span class="ml-1 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest">Tied</span>
+                                                    @endif
+                                                </span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                @else
+                                    <span class="min-w-0 flex-1 truncate text-[var(--muted)]">Driver #{{ $row['driver_id'] }}</span>
+                                @endif
+                                <span class="shrink-0 text-right">
+                                    <span class="block font-mono text-lg font-black text-white">{{ $row['points'] }}</span>
+                                    <span class="block font-mono text-[9px] text-[var(--muted)]">pts</span>
+                                </span>
+                            </div>
+
+                            <dl @class([
+                                'mt-3 grid gap-2 border-t border-[var(--line)] pt-3',
+                                'grid-cols-2' => count($events) <= 2,
+                                'grid-cols-3' => count($events) === 3,
+                                'grid-cols-4' => count($events) >= 4,
+                            ])>
+                                @foreach ($events as $event)
+                                    <div>
+                                        <dt class="truncate text-[9px] uppercase tracking-widest text-[var(--muted)]">{{ $event['name'] }}</dt>
+                                        <dd class="font-mono text-sm font-bold text-white">{{ $event['points'][$row['driver_id']] ?? '—' }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+
+                            <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--muted)]">
+                                <span>Wins <span class="font-mono text-white">{{ $row['wins'] }}</span></span>
+                                <span>Podiums <span class="font-mono text-white">{{ $row['podiums'] }}</span></span>
+                                <span>Poles <span class="font-mono text-white">{{ $row['poles'] }}</span></span>
+                                @if ($row['position'] !== 1)
+                                    <span>Gap <span class="font-mono text-white">+{{ $row['points_gap'] }}</span></span>
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
             @endif
         </section>
+
+        {{-- Constructors' standings: a team's points are the sum of its members'
+             individual season points, recomputed from the same results. --}}
+        @if (! empty($teamStandings))
+            <section class="space-y-4">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 class="text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Team standings</h2>
+                    <p class="text-[10px] text-[var(--muted)]">Sum of each team's members' season points</p>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--panel)]">
+                    <table class="w-full text-left text-sm">
+                        <caption class="sr-only">Team standings for {{ $season->name }}</caption>
+                        <thead>
+                            <tr class="border-b border-[var(--line)] text-[10px] uppercase tracking-widest text-[var(--muted)]">
+                                <th scope="col" class="w-14 px-4 py-3">Pos</th>
+                                <th scope="col" class="px-4 py-3">Team</th>
+                                <th scope="col" class="px-4 py-3">Drivers</th>
+                                <th scope="col" class="border-l border-[var(--line)] px-4 py-3 text-right">Points</th>
+                                <th scope="col" class="px-4 py-3 text-right">Gap</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[var(--line)]/60">
+                            @foreach ($teamStandings as $team)
+                                <tr @class(['bg-[var(--red)]/[.05]' => $team['position'] === 1])>
+                                    <td class="px-4 py-3">
+                                        <span @class([
+                                            'grid size-7 place-items-center rounded-lg border',
+                                            'border-[var(--red)]/40 bg-[var(--red)]/10 font-black text-[var(--red-bright)]' => $team['position'] === 1,
+                                            'border-[var(--line)] bg-white/[.03] font-mono text-xs' => $team['position'] !== 1,
+                                        ])>{{ $team['position'] }}</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="grid size-8 shrink-0 place-items-center rounded-lg text-[10px] font-black"
+                                                  style="background-color: {{ $team['logo_color'] ?: '#c43c2d' }}; color: {{ $team['logo_text_color'] ?: '#ffffff' }}">{{ $team['logo_initials'] ?: 'NA' }}</span>
+                                            <span class="font-semibold">{{ $team['name'] }}</span>
+                                            @if ($team['tied'])
+                                                <span class="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[var(--muted)]">Tied</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-[var(--muted)]">
+                                        @foreach ($team['members'] as $member)
+                                            <span class="mr-2 whitespace-nowrap">{{ $member['name'] }} <span class="font-mono text-white">{{ $member['points'] }}</span></span>
+                                        @endforeach
+                                    </td>
+                                    <td class="border-l border-[var(--line)] px-4 py-3 text-right font-mono text-base font-black text-white">{{ $team['points'] }}</td>
+                                    <td class="px-4 py-3 text-right font-mono text-xs text-[var(--muted)]">{{ $team['position'] === 1 ? '—' : '+'.$team['points_gap'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
 
         <section class="space-y-4" id="season-races">
             <div class="flex flex-wrap items-center justify-between gap-3">

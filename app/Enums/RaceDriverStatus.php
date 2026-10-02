@@ -12,6 +12,7 @@ enum RaceDriverStatus: string
     case Finished = 'finished';
     case Dnf = 'dnf';
     case Dns = 'dns';
+    case Disqualified = 'disqualified';
     case Retired = 'retired';
     case Withdrawn = 'withdrawn';
 }

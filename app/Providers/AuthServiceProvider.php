@@ -6,10 +6,12 @@ use App\Models\Driver;
 use App\Models\Group;
 use App\Models\Race;
 use App\Models\Season;
+use App\Models\Team;
 use App\Policies\DriverPolicy;
 use App\Policies\GroupPolicy;
 use App\Policies\RacePolicy;
 use App\Policies\SeasonPolicy;
+use App\Policies\TeamPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -24,6 +26,7 @@ class AuthServiceProvider extends ServiceProvider
         Driver::class => DriverPolicy::class,
         Season::class => SeasonPolicy::class,
         Race::class => RacePolicy::class,
+        Team::class => TeamPolicy::class,
     ];
 
     public function boot(): void

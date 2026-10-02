@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\GroupRole;
 use App\Enums\RaceStatus;
 use App\Http\Requests\StoreRaceRequest;
+use App\Http\Requests\UpdateRaceEventLabelRequest;
 use App\Http\Requests\UpdateRaceRequest;
 use App\Models\Race;
 use App\Services\RaceService;
@@ -176,6 +177,25 @@ class RaceController extends Controller
         ]);
 
         return redirect()->route('races.show', $race);
+    }
+
+    /**
+     * Set or clear the public event label (e.g. PITSTOP, VIRAJ, FNF).
+     *
+     * This is deliberately separate from update(): a race is only editable
+     * while it is a draft or in the lobby, but a label describes how a race is
+     * presented on a published leaderboard, so it stays editable once the race
+     * has been run. It only ever changes the label, never results.
+     */
+    public function updateEventLabel(UpdateRaceEventLabelRequest $request, Race $race): RedirectResponse
+    {
+        $label = trim((string) $request->input('event_label', ''));
+
+        $race->update(['event_label' => $label === '' ? null : $label]);
+
+        return back()->with('status', $race->event_label === null
+            ? 'Event label cleared.'
+            : "Event label set to {$race->event_label}.");
     }
 
     public function destroy(Race $race): RedirectResponse

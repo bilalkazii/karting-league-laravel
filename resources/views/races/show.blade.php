@@ -56,6 +56,23 @@
                         <x-button type="button" variant="ghost"><x-lucide-pencil class="size-3.5" />Edit</x-button>
                     </a>
                 @endif
+                {{-- A public event label (PITSTOP, VIRAJ, FNF) stays editable
+                     after the race is run, because it names how the event
+                     appears on the leaderboard rather than the race itself. --}}
+                <form method="POST" action="{{ route('races.event-label.update', $race) }}"
+                      class="flex items-center gap-2">
+                    @csrf
+                    @method('PATCH')
+                    <label for="event_label" class="sr-only">Event label</label>
+                    <input id="event_label" name="event_label" type="text" maxlength="32" value="{{ $race->event_label }}"
+                           placeholder="Event label (e.g. PITSTOP)"
+                           @error('event_label') aria-invalid="true" @enderror
+                           class="w-44 rounded-lg border border-[var(--line)] bg-white/[.03] px-2.5 py-1.5 text-xs uppercase tracking-wider text-white placeholder:normal-case placeholder:tracking-normal placeholder:text-[var(--muted)] focus:border-[var(--red)] focus:outline-none" />
+                    <x-button type="submit" variant="ghost"><x-lucide-tag class="size-3.5" />Save label</x-button>
+                </form>
+                @error('event_label')
+                    <p class="w-full text-xs text-[var(--red-bright)]">{{ $message }}</p>
+                @enderror
             @endif
             <a href="{{ route('chat.race', $race) }}">
                 <x-button type="button" variant="ghost"><x-lucide-message-square class="size-3.5" />Race chat</x-button>

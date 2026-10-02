@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('qualifying_status')->default('not_started');
             $table->unsignedInteger('finish_position')->nullable();
             $table->integer('penalty_total_seconds')->default(0);
-            $table->text('notes')->default('');
+            $table->text('notes')->nullable();
             $table->primary(['race_id', 'driver_id']);
         });
     }

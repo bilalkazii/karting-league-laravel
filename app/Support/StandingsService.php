@@ -9,6 +9,8 @@ use App\Models\RaceEntry;
 use App\Models\RacePenalty;
 use App\Models\Season;
 use App\Models\SeasonScoring;
+use App\Models\Team;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -24,6 +26,7 @@ final class StandingsService
         'retired' => 2,
         'withdrawn' => 3,
         'dns' => 4,
+        'disqualified' => 5,
         'racing' => 9,
         'ready' => 9,
         'confirmed' => 9,
@@ -31,7 +34,25 @@ final class StandingsService
         'declined' => 9,
     ];
 
-    public const DEFAULT_POINTS_BY_POSITION = [1 => 25, 2 => 18, 3 => 15, 4 => 12, 5 => 10, 6 => 8, 7 => 6, 8 => 4];
+    /**
+     * The current Formula 1 Grand Prix points scale, P1-P10. Any finishing
+     * position outside this range scores zero, as does a DNF, DNS, retirement,
+     * withdrawal or disqualification. There is no fastest-lap bonus.
+     */
+    public const F1_POINTS_BY_POSITION = [
+        1 => 25,
+        2 => 18,
+        3 => 15,
+        4 => 12,
+        5 => 10,
+        6 => 8,
+        7 => 6,
+        8 => 4,
+        9 => 2,
+        10 => 1,
+    ];
+
+    public const DEFAULT_POINTS_BY_POSITION = self::F1_POINTS_BY_POSITION;
 
     /**
      * @param  iterable<RaceEntry>  $entries
@@ -57,7 +78,7 @@ final class StandingsService
 
     public static function isClassified(string $status): bool
     {
-        return (self::CLASSIFICATION_RANK[$status] ?? 9) <= 4;
+        return (self::CLASSIFICATION_RANK[$status] ?? 9) <= 5;
     }
 
     public static function validQualifyingTime(array $entry): bool
@@ -103,9 +124,18 @@ final class StandingsService
         foreach ($classified as $d) {
             $finished = $d['status'] === 'finished';
             $position = $finished ? $d['finish_position'] : null;
+
+            // A result that did not finish scores zero. The league's rule
+            // covers DNF, DNS, retirement, withdrawal and disqualification, so
+            // a stale dnf_points/dns_points value is deliberately ignored
+            // rather than quietly changing a confirmed zero. An
+            // administrator's documented ruling belongs in the season's own
+            // scoring rows, never in this default. There is no fastest-lap
+            // bonus anywhere in this calculation.
             $basePoints = $finished
                 ? ($position !== null ? ($pointsByPosition[$position] ?? 0) : 0)
-                : ($d['status'] === 'dns' ? ($scoring['dns_points'] ?? 0) : ($scoring['dnf_points'] ?? 0));
+                : 0;
+
             $polePoints = $poleId === $d['driver_id'] ? ($scoring['pole_position_points'] ?? 0) : 0;
             $result[] = [
                 'driver_id' => $d['driver_id'],
@@ -124,17 +154,176 @@ final class StandingsService
     }
 
     /**
-     * Standings for a season over its completed races (date order), computing a
+     * Constructors' Championship standings: a team's points are the sum of its
+     * members' individual championship points for the same season. Nothing is
+     * read from a stored total, so the number always reconciles with the
+     * driver leaderboard above it.
+     *
+     * @param  iterable<Team>  $teams
+     * @param  list<array<string, mixed>>  $standings  output of computeStandings()['final']
+     * @return list<array<string, mixed>>
+     */
+    public static function teamStandings(iterable $teams, array $standings): array
+    {
+        $pointsByDriver = [];
+        foreach ($standings as $row) {
+            $pointsByDriver[(int) $row['driver_id']] = (int) $row['points'];
+        }
+
+        $rows = [];
+
+        foreach ($teams as $team) {
+            $memberIds = $team->relationLoaded('members')
+                ? $team->members->pluck('id')->map(fn ($id): int => (int) $id)->all()
+                : $team->members()->pluck('drivers.id')->map(fn ($id): int => (int) $id)->all();
+
+            $contributing = [];
+            $total = 0;
+            $bestFinish = null;
+
+            foreach ($memberIds as $memberId) {
+                $memberPoints = $pointsByDriver[$memberId] ?? 0;
+                $contributing[] = [
+                    'driver_id' => $memberId,
+                    'name' => $team->members->firstWhere('id', $memberId)?->profile?->full_name
+                        ?? $team->members->firstWhere('id', $memberId)?->nickname
+                        ?? 'Driver #'.$memberId,
+                    'points' => $memberPoints,
+                ];
+                $total += $memberPoints;
+            }
+
+            $rows[] = [
+                'team_id' => (int) $team->id,
+                'name' => (string) $team->name,
+                'logo_initials' => $team->logo_initials,
+                'logo_color' => $team->logo_color,
+                'logo_text_color' => $team->logo_text_color,
+                'points' => $total,
+                'member_count' => count($contributing),
+                'members' => $contributing,
+            ];
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            return ($b['points'] <=> $a['points'])
+                ?: ($b['member_count'] <=> $a['member_count'])
+                ?: ($a['team_id'] <=> $b['team_id']);
+        });
+
+        $leaderPoints = $rows[0]['points'] ?? 0;
+        foreach ($rows as $i => &$row) {
+            $row['position'] = $i + 1;
+            $row['points_gap'] = $leaderPoints - $row['points'];
+            $row['tied'] = $i > 0 && $rows[$i - 1]['points'] === $row['points'];
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * The races that count towards standings, in championship order: rounds
+     * first (via the season pivot), falling back to date/time for races that
+     * are not attached to a season round.
+     *
+     * @param  iterable<Race>  $races
+     * @return Collection<int, Race>
+     */
+    public static function scoredRaces(iterable $races): Collection
+    {
+        return collect($races)
+            ->filter(fn (Race $r) => $r->status === RaceStatus::Completed)
+            ->sortBy(static fn (Race $r): array => [
+                ((int) ($r->pivot?->round_number ?? 0)) > 0 ? 0 : 1,
+                (int) ($r->pivot?->round_number ?? 0),
+                $r->date?->format('Y-m-d') ?? '9999-12-31',
+                (string) $r->start_time,
+            ])
+            ->values();
+    }
+
+    /**
+     * Per-event points for each scored race, so the leaderboard can show one
+     * column per event alongside the season total. Values come from the same
+     * scoring config as computeStandings, so the columns always reconcile with
+     * the totals.
+     *
+     * @param  iterable<Race>  $races
+     * @return list<array<string, mixed>>
+     */
+    public static function eventBreakdown(iterable $races, array $scoring): array
+    {
+        $events = [];
+
+        foreach (self::scoredRaces($races) as $race) {
+            $points = self::computeRacePoints(self::raceEntries($race->entries), $scoring);
+
+            $byDriver = [];
+            foreach ($points['entries'] as $entry) {
+                $byDriver[(int) $entry['driver_id']] = (int) $entry['points'];
+            }
+
+            // A race may carry a public event label (PITSTOP, VIRAJ, FNF). When
+            // set it is what the leaderboard shows, so the column matches the
+            // published standings. Races without a label keep showing their
+            // name, and nothing here assumes a fixed number of events.
+            $label = trim((string) ($race->event_label ?? ''));
+
+            $events[] = [
+                'race' => $race,
+                'race_id' => (int) $race->id,
+                'round' => (int) ($race->pivot?->round_number ?? 0) ?: null,
+                'name' => $label !== '' ? $label : (string) $race->name,
+                'event_label' => $label !== '' ? $label : null,
+                'race_name' => (string) $race->name,
+                'venue_name' => $race->venue_name,
+                'date' => $race->date,
+                'points' => $byDriver,
+            ];
+        }
+
+        return $events;
+    }
+
+    /**
+     * Races still to run, plus the scheduled final race date. Read from the
+     * season's own races so nothing is invented for races that have not
+     * happened yet.
+     *
+     * @param  iterable<Race>  $races
+     * @return array{remaining: int, remaining_races: list<Race>, final_race: Race|null, final_race_date: Carbon|null}
+     */
+    public static function progress(iterable $races): array
+    {
+        $all = collect($races);
+        $remaining = $all
+            ->reject(fn (Race $r) => $r->status === RaceStatus::Completed || $r->status === RaceStatus::Cancelled)
+            ->sortBy(static fn (Race $r): array => [
+                $r->date?->format('Y-m-d') ?? '9999-12-31',
+                (string) $r->start_time,
+            ])
+            ->values();
+
+        $final = $remaining->last();
+
+        return [
+            'remaining' => $remaining->count(),
+            'remaining_races' => $remaining->all(),
+            'final_race' => $final,
+            'final_race_date' => $final?->date,
+        ];
+    }
+
+    /**
+     * Standings for a season over its completed races, computing a
      * snapshot after each completed race. Mirrors computeStandings.
      *
      * @param  iterable<Race>  $races
      */
     public static function computeStandings(iterable $races, array $scoring): array
     {
-        $completed = collect($races)
-            ->filter(fn (Race $r) => $r->status === RaceStatus::Completed)
-            ->sortBy(static fn (Race $r) => $r->date?->format('Y-m-d').' '.$r->start_time)
-            ->values();
+        $completed = self::scoredRaces($races);
 
         $snapshots = [];
         $prev = null;
@@ -277,6 +466,8 @@ final class StandingsService
             $bestA = $a['qualifying_best'] ?? null;
             $bestB = $b['qualifying_best'] ?? null;
 
+            // Established tie-break: points, then wins, then podiums, then
+            // poles, then best qualifying time, then driver id for stability.
             return ($b['points'] <=> $a['points'])
                 ?: ($b['wins'] <=> $a['wins'])
                 ?: ($b['podiums'] <=> $a['podiums'])
@@ -294,6 +485,8 @@ final class StandingsService
             $row['trend'] = $prevPos === null
                 ? 'same'
                 : ($prevPos > $row['position'] ? 'up' : ($prevPos < $row['position'] ? 'down' : 'same'));
+            // True when the driver is level on points with the driver above.
+            $row['tied'] = $i > 0 && $rows[$i - 1]['points'] === $row['points'];
         }
         unset($row);
 
@@ -327,6 +520,12 @@ final class StandingsService
     /**
      * Scalar scoring config derived from a season's season_scoring + scoring_points.
      *
+     * The F1 scale is the default. A season's own scoring_points rows override
+     * it where present, so a league can document a different scale, but any
+     * position the season has not configured falls back to the F1 value rather
+     * than to zero. There is no fastest-lap bonus and no pole bonus by
+     * default: F1 awards points by finishing position only.
+     *
      * @return array<string, mixed>
      */
     public static function scoringFor(Season $season): array
@@ -341,9 +540,9 @@ final class StandingsService
 
         return [
             'mode' => $mode,
-            'points_by_position' => $points->all() ?: self::DEFAULT_POINTS_BY_POSITION,
-            'pole_position_points' => $scoring?->pole_position_points ?? 1,
-            'fastest_lap_points' => $scoring?->fastest_lap_points ?? 0,
+            'points_by_position' => $points->all() + self::F1_POINTS_BY_POSITION,
+            'pole_position_points' => $scoring?->pole_position_points ?? 0,
+            'fastest_lap_points' => 0,
             'participation_points' => $scoring?->participation_points ?? 0,
             'dnf_points' => $scoring?->dnf_points ?? 0,
             'dns_points' => $scoring?->dns_points ?? 0,

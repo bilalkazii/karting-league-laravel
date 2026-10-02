@@ -20,6 +20,7 @@ class Race extends Model
     protected $fillable = [
         'group_id',
         'name',
+        'event_label',
         'venue_name',
         'date',
         'start_time',

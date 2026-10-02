@@ -14,6 +14,7 @@ use App\Models\Season;
 use App\Models\SeasonRecord;
 use App\Models\SeasonScoring;
 use App\Models\Team;
+use App\Support\StandingsService;
 use Illuminate\Database\Seeder;
 
 /**
@@ -71,7 +72,9 @@ class ChampionshipContentSeeder extends Seeder
             ['season_id' => $season->id],
             [
                 'mode' => 'automatic',
-                'pole_position_points' => 1,
+                // F1 awards points by finishing position only: no pole bonus
+                // and no fastest-lap bonus.
+                'pole_position_points' => 0,
                 'fastest_lap_points' => 0,
                 'participation_points' => 0,
                 'dnf_points' => 0,
@@ -80,7 +83,7 @@ class ChampionshipContentSeeder extends Seeder
             ]
         );
 
-        $pointsByPosition = [1 => 25, 2 => 18, 3 => 15, 4 => 12, 5 => 10, 6 => 8, 7 => 6, 8 => 4];
+        $pointsByPosition = [1 => 25, 2 => 18, 3 => 15, 4 => 12, 5 => 10, 6 => 8, 7 => 6, 8 => 4, 9 => 2, 10 => 1];
         foreach ($pointsByPosition as $position => $points) {
             ScoringPoint::firstOrCreate(
                 ['season_id' => $season->id, 'position' => $position],
@@ -218,10 +221,27 @@ class ChampionshipContentSeeder extends Seeder
         // -------------------------------------------------------------------
         // Season awards
         // -------------------------------------------------------------------
+        // The two points figures are derived from the same computation the
+        // championship page uses, so a published award can never disagree with
+        // the leaderboard above it.
+        $standings = StandingsService::computeStandings(
+            $season->races()->with(['entries', 'penalties'])->get(),
+            StandingsService::scoringFor($season),
+        )['final'];
+
+        $leaderPoints = $standings[0]['points'] ?? 0;
+
         $teamLeader = Team::where('name', 'Apex Racing')->firstOrFail();
+
+        $teamStandings = StandingsService::teamStandings(
+            Team::with('members.profile')->where('group_id', $group->id)->get(),
+            $standings,
+        );
+        $apexPoints = collect($teamStandings)->firstWhere('team_id', $teamLeader->id)['points'] ?? 0;
+
         $seasonAwards = [
-            ['aw_7',  'team_champion',     'Team Leader',              'Leading team after round 3',             null,         $teamLeader->id, null,     '118 pts',  '2026-07-19'],
-            ['aw_8',  'championship_winner', 'Leader After Round 3',    'Current standings leader',              'drv_1',      null,            null,     '70 pts',   '2026-07-19'],
+            ['aw_7',  'team_champion',     'Team Leader',              'Leading team after round 3',             null,         $teamLeader->id, null,     $apexPoints.' pts',  '2026-07-19'],
+            ['aw_8',  'championship_winner', 'Leader After Round 3',    'Current standings leader',              'drv_1',      null,            null,     $leaderPoints.' pts', '2026-07-19'],
             ['aw_9',  'most_wins',         'Most Wins (3 rounds)',    'Most race wins so far',                  'drv_1',      null,            null,     '2 wins',   '2026-07-19'],
             ['aw_10', 'most_poles',        'Most Poles (3 rounds)',   'Most pole positions so far',             'drv_1',      null,            null,     '2 poles',  '2026-07-19'],
             ['aw_11', 'cleanest_season',   'Cleanest Season (3 rounds)', 'Most penalty-free races so far',       'drv_1',      null,            null,     '3 races',  '2026-07-19'],

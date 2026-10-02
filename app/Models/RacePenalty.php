@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Database\Factories\RacePenaltyFactory;
+use App\Enums\RacePenaltyStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,7 +24,7 @@ class RacePenalty extends Model
     {
         return [
             'seconds' => 'integer',
-            'status' => \App\Enums\RacePenaltyStatus::class,
+            'status' => RacePenaltyStatus::class,
         ];
     }
 

@@ -263,6 +263,7 @@ class RaceService
                 RaceDriverStatus::Finished->value,
                 RaceDriverStatus::Dnf->value,
                 RaceDriverStatus::Dns->value,
+                RaceDriverStatus::Disqualified->value,
                 RaceDriverStatus::Retired->value,
                 RaceDriverStatus::Withdrawn->value,
             ])->count();

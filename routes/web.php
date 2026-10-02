@@ -3,6 +3,7 @@
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
+use App\Http\Controllers\DriverImportController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\InviteController;
 use App\Http\Controllers\NotificationController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceSessionController;
 use App\Http\Controllers\SeasonController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -32,6 +34,20 @@ Route::middleware('auth')->group(function () {
     Route::delete('/groups/{group}/members/{driver}', [GroupController::class, 'removeMember'])->name('groups.members.destroy');
     Route::post('/groups/{group}/availability', [GroupController::class, 'updateAvailability'])->name('groups.availability.update');
 
+    Route::get('/groups/{group}/teams', [TeamController::class, 'index'])->name('groups.teams');
+    Route::post('/groups/{group}/teams', [TeamController::class, 'store'])->name('groups.teams.store');
+    Route::patch('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
+    Route::put('/teams/{team}/members', [TeamController::class, 'updateMembers'])->name('teams.members.update');
+    Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
+
+    // Driver CSV import. Uploading only builds a preview; nothing is written
+    // to drivers or results until the preview is explicitly confirmed.
+    Route::get('/groups/{group}/imports', [DriverImportController::class, 'index'])->name('groups.imports.index');
+    Route::post('/groups/{group}/imports', [DriverImportController::class, 'store'])->name('groups.imports.store');
+    Route::get('/groups/{group}/imports/{import}', [DriverImportController::class, 'show'])->name('groups.imports.show');
+    Route::post('/groups/{group}/imports/{import}/confirm', [DriverImportController::class, 'confirm'])->name('groups.imports.confirm');
+    Route::delete('/groups/{group}/imports/{import}', [DriverImportController::class, 'destroy'])->name('groups.imports.destroy');
+
     Route::post('/groups/{group}/invites', [InviteController::class, 'store'])
         ->middleware('throttle:invite-create')
         ->name('groups.invites.store');
@@ -46,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
     Route::get('/races/{race}/edit', [RaceController::class, 'edit'])->name('races.edit');
     Route::patch('/races/{race}', [RaceController::class, 'update'])->name('races.update');
+    Route::patch('/races/{race}/event-label', [RaceController::class, 'updateEventLabel'])->name('races.event-label.update');
     Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
 
     Route::post('/races/{race}/lobby', [RaceSessionController::class, 'openLobby'])->name('races.lobby.open');
