@@ -136,7 +136,7 @@ Requires **PHP 8.3+** with `ctype`, `filter`, `hash`, `mbstring`, `openssl` and
 `tokenizer`, plus **Composer** and **Node.js 20+**.
 
 ```bash
-git clone https://github.com/<owner>/karting-league-laravel.git
+git clone https://github.com/bilalkazii/karting-league-laravel.git
 cd karting-league-laravel
 composer setup
 ```
