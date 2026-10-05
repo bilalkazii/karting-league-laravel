@@ -138,7 +138,7 @@ class SeasonRaceSchedulingTest extends TestCase
         $season = $this->makeSeason($group);
         $race = $this->makeRace($group, 'Member Target');
 
-        $member = User::findOrFail(3);
+        $member = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->actingAs($member)
             ->post(route('seasons.races.store', $season), ['race_id' => $race->id])
@@ -242,7 +242,7 @@ class SeasonRaceSchedulingTest extends TestCase
         $season = $this->makeSeason($group);
         $this->makeRace($group, 'Hidden Target');
 
-        $member = User::findOrFail(3);
+        $member = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->actingAs($member)
             ->get(route('championship.show', $season))

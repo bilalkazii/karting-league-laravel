@@ -21,7 +21,7 @@ class NotificationTest extends TestCase
     {
         $this->seed();
 
-        return User::findOrFail(1);
+        return User::where('email', 'demo@karting.app')->firstOrFail();
     }
 
     private function kartingCrew(): Group
@@ -35,7 +35,7 @@ class NotificationTest extends TestCase
             'group_id' => $this->kartingCrew()->id,
             'name' => 'Notification Sprint',
             'status' => RaceStatus::Draft->value,
-            'organizer_id' => 1,
+            'organizer_id' => User::where('email', 'demo@karting.app')->firstOrFail()->driver->id,
         ]);
     }
 
@@ -91,7 +91,7 @@ class NotificationTest extends TestCase
     public function test_cannot_mark_another_users_notification(): void
     {
         $owner = $this->demoActor();
-        $other = User::findOrFail(2);
+        $other = User::where('email', 'drv2@karting.app')->firstOrFail();
         $race = $this->draftRace();
         $owner->notify(new RaceOpened($race));
         $notification = $owner->notifications()->firstOrFail();
@@ -106,12 +106,16 @@ class NotificationTest extends TestCase
     public function test_open_lobby_notifies_all_group_members(): void
     {
         $this->demoActor();
+        $group = $this->kartingCrew();
         $race = $this->draftRace();
 
         app(RaceService::class)->openLobby($race);
 
-        foreach (range(1, 8) as $id) {
-            $user = User::findOrFail($id);
+        $members = $group->members()->with('profile.user')->get();
+        $this->assertCount(8, $members);
+
+        foreach ($members as $member) {
+            $user = $member->profile->user;
             $this->assertSame(1, $user->unreadNotifications()->count());
             $this->assertSame(
                 RaceOpened::class,
@@ -122,45 +126,48 @@ class NotificationTest extends TestCase
 
     public function test_complete_race_notifies_entry_drivers(): void
     {
-        $this->demoActor();
+        $user = $this->demoActor();
         $group = $this->kartingCrew();
         $race = Race::factory()->create([
             'group_id' => $group->id,
             'name' => 'Racing Sprint',
             'status' => RaceStatus::Draft->value,
-            'organizer_id' => 1,
+            'organizer_id' => $user->driver->id,
         ]);
+        $umar = User::where('email', 'drv3@karting.app')->firstOrFail();
+        $arjun = User::where('email', 'drv4@karting.app')->firstOrFail();
+        $zain = User::where('email', 'drv5@karting.app')->firstOrFail();
         $service = app(RaceService::class);
-        $service->setParticipants($race, [3, 4]);
+        $service->setParticipants($race, [$umar->driver->id, $arjun->driver->id]);
         $race->update(['status' => RaceStatus::Racing->value]);
 
         $this->assertTrue($service->completeRace($race));
 
-        foreach ([3, 4] as $id) {
-            $user = User::findOrFail($id);
-            $this->assertSame(1, $user->unreadNotifications()->count());
+        foreach ([$umar, $arjun] as $recipient) {
+            $this->assertSame(1, $recipient->unreadNotifications()->count());
             $this->assertSame(
                 RaceCompleted::class,
-                $user->unreadNotifications()->firstOrFail()->type
+                $recipient->unreadNotifications()->firstOrFail()->type
             );
         }
 
-        $this->assertSame(0, User::findOrFail(5)->unreadNotifications()->count());
+        $this->assertSame(0, $zain->unreadNotifications()->count());
     }
 
     public function test_issue_penalty_notifies_target_driver(): void
     {
-        $this->demoActor();
+        $user = $this->demoActor();
         $race = $this->draftRace();
+        $target = User::where('email', 'drv3@karting.app')->firstOrFail();
+        $arjun = User::where('email', 'drv4@karting.app')->firstOrFail();
         $service = app(RaceService::class);
-        $service->setParticipants($race, [3]);
+        $service->setParticipants($race, [$target->driver->id]);
 
-        $this->assertTrue($service->issuePenalty($race, 3, 5, 'Track limits abuse', 1));
+        $this->assertTrue($service->issuePenalty($race, $target->driver->id, 5, 'Track limits abuse', $user->driver->id));
 
-        $target = User::findOrFail(3);
         $this->assertSame(1, $target->unreadNotifications()->count());
         $this->assertSame(PenaltyIssued::class, $target->unreadNotifications()->firstOrFail()->type);
 
-        $this->assertSame(0, User::findOrFail(4)->unreadNotifications()->count());
+        $this->assertSame(0, $arjun->unreadNotifications()->count());
     }
 }

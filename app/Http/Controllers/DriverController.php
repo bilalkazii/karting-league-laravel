@@ -33,7 +33,7 @@ class DriverController extends Controller
         $drivers = Driver::query()
             ->with('profile')
             ->with(['groups' => fn ($q) => $q->whereIn('groups.id', $viewerGroupIds)])
-            ->with(['teams.group' => fn ($q) => $q->whereIn('group_id', $viewerGroupIds)])
+            ->with(['teams' => fn ($q) => $q->whereIn('teams.group_id', $viewerGroupIds), 'teams.group'])
             ->when(request('q'), function ($query, $term) {
                 $query->where(function ($where) use ($term) {
                     $where->where('nickname', 'like', "%{$term}%")

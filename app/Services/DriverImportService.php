@@ -286,6 +286,7 @@ class DriverImportService
     public function summary(DriverImport $import): array
     {
         $counts = $import->rows()
+            ->reorder()
             ->selectRaw('match_status, count(*) as total')
             ->groupBy('match_status')
             ->pluck('total', 'match_status');

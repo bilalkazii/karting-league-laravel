@@ -28,7 +28,7 @@ class InviteTest extends TestCase
     {
         $this->seed();
 
-        return User::findOrFail(1);
+        return User::where('email', 'demo@karting.app')->firstOrFail();
     }
 
     private function kartingCrew(): Group
@@ -103,7 +103,7 @@ class InviteTest extends TestCase
     {
         Mail::fake();
         $this->demoActor();
-        $organizer = User::findOrFail(2);
+        $organizer = User::where('email', 'drv2@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
 
         $this->actingAs($organizer)
@@ -117,7 +117,7 @@ class InviteTest extends TestCase
     {
         Mail::fake();
         $this->demoActor();
-        $member = User::findOrFail(3);
+        $member = User::where('email', 'drv3@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
 
         $this->actingAs($member)
@@ -142,7 +142,7 @@ class InviteTest extends TestCase
 
         // A manager of group B cannot revoke a group A invite through group B's route → 404.
         $inviteA = $this->createInvite($groupA)['invite'];
-        $managerB = User::findOrFail(5);
+        $managerB = User::where('email', 'drv5@karting.app')->firstOrFail();
 
         $this->actingAs($managerB)
             ->delete(route('groups.invites.destroy', [$groupB, $inviteA]))

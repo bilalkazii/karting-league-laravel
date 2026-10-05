@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\RaceFormat;
 use App\Enums\RaceStatus;
 use Database\Factories\RaceFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,17 @@ class Race extends Model
             'status' => RaceStatus::class,
             'qualifying_lap_count' => 'integer',
         ];
+    }
+
+    /**
+     * MySQL returns a native TIME column as HH:MM:SS, so trim the seconds off
+     * to keep the value in the H:i shape the forms, validation and views use.
+     */
+    protected function startTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? substr($value, 0, 5) : $value,
+        );
     }
 
     public function group(): BelongsTo

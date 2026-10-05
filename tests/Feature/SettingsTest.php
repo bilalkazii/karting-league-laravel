@@ -166,7 +166,7 @@ class SettingsTest extends TestCase
             'group_id' => $this->kartingCrew()->id,
             'name' => 'Muted Sprint',
             'status' => RaceStatus::Draft->value,
-            'organizer_id' => 1,
+            'organizer_id' => $user->driver->id,
         ]);
 
         app(RaceService::class)->openLobby($race);
@@ -177,29 +177,30 @@ class SettingsTest extends TestCase
 
     public function test_muting_race_completed_suppresses_only_that_recipient(): void
     {
-        $this->demoActor();
+        $user = $this->demoActor();
         $muted = User::where('email', 'drv3@karting.app')->firstOrFail();
+        $notified = User::where('email', 'drv4@karting.app')->firstOrFail();
         $muted->setPreference(NotificationType::RaceCompleted->preferenceKey(), '0');
 
         $race = Race::factory()->create([
             'group_id' => $this->kartingCrew()->id,
             'name' => 'Muted Finish',
             'status' => RaceStatus::Draft->value,
-            'organizer_id' => 1,
+            'organizer_id' => $user->driver->id,
         ]);
 
         $service = app(RaceService::class);
-        $service->setParticipants($race, [3, 4]);
+        $service->setParticipants($race, [$muted->driver->id, $notified->driver->id]);
         $race->update(['status' => RaceStatus::Racing->value]);
         $this->assertTrue($service->completeRace($race));
 
         $this->assertSame(0, $muted->unreadNotifications()->count());
-        $this->assertSame(1, User::findOrFail(4)->unreadNotifications()->count());
+        $this->assertSame(1, $notified->unreadNotifications()->count());
     }
 
     public function test_muting_penalty_suppresses_the_target_notification(): void
     {
-        $this->demoActor();
+        $user = $this->demoActor();
         $muted = User::where('email', 'drv3@karting.app')->firstOrFail();
         $muted->setPreference(NotificationType::PenaltyIssued->preferenceKey(), '0');
 
@@ -207,12 +208,12 @@ class SettingsTest extends TestCase
             'group_id' => $this->kartingCrew()->id,
             'name' => 'Muted Penalty',
             'status' => RaceStatus::Draft->value,
-            'organizer_id' => 1,
+            'organizer_id' => $user->driver->id,
         ]);
 
         $service = app(RaceService::class);
-        $service->setParticipants($race, [3]);
-        $this->assertTrue($service->issuePenalty($race, 3, 5, 'Track limits', 1));
+        $service->setParticipants($race, [$muted->driver->id]);
+        $this->assertTrue($service->issuePenalty($race, $muted->driver->id, 5, 'Track limits', $user->driver->id));
 
         $this->assertSame(0, $muted->unreadNotifications()->count());
     }

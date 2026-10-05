@@ -19,7 +19,7 @@ class GroupMemberManagementTest extends TestCase
     {
         $this->seed();
 
-        return User::findOrFail(1);
+        return User::where('email', 'demo@karting.app')->firstOrFail();
     }
 
     private function kartingCrew(): Group
@@ -44,10 +44,11 @@ class GroupMemberManagementTest extends TestCase
     {
         $this->demoActor();
         $group = $this->kartingCrew();
+        $umar = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->post(route('groups.members.store', $group))->assertRedirect(route('login'));
-        $this->patch(route('groups.members.role', [$group, 3]))->assertRedirect(route('login'));
-        $this->delete(route('groups.members.destroy', [$group, 3]))->assertRedirect(route('login'));
+        $this->patch(route('groups.members.role', [$group, $umar->driver->id]))->assertRedirect(route('login'));
+        $this->delete(route('groups.members.destroy', [$group, $umar->driver->id]))->assertRedirect(route('login'));
     }
 
     public function test_admin_can_add_member(): void
@@ -70,16 +71,17 @@ class GroupMemberManagementTest extends TestCase
     {
         $user = $this->demoActor();
         $group = $this->kartingCrew();
+        $umar = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->actingAs($user)
-            ->post(route('groups.members.store', $group), ['driver_id' => 3])
+            ->post(route('groups.members.store', $group), ['driver_id' => $umar->driver->id])
             ->assertStatus(422);
     }
 
     public function test_organizer_can_add_member(): void
     {
         $user = $this->demoActor();
-        $organizer = User::findOrFail(2);
+        $organizer = User::where('email', 'drv2@karting.app')->firstOrFail();
         [, $newDriver] = $this->userWithDriver();
         $group = $this->kartingCrew();
 
@@ -93,7 +95,7 @@ class GroupMemberManagementTest extends TestCase
     public function test_plain_member_cannot_add_member(): void
     {
         $user = $this->demoActor();
-        $member = User::findOrFail(3);
+        $member = User::where('email', 'drv3@karting.app')->firstOrFail();
         [, $newDriver] = $this->userWithDriver();
         $group = $this->kartingCrew();
 
@@ -108,12 +110,13 @@ class GroupMemberManagementTest extends TestCase
     {
         $user = $this->demoActor();
         $group = $this->kartingCrew();
+        $umar = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->actingAs($user)
-            ->patch(route('groups.members.role', [$group, 3]), ['role' => GroupRole::Organizer->value])
+            ->patch(route('groups.members.role', [$group, $umar->driver->id]), ['role' => GroupRole::Organizer->value])
             ->assertRedirect(route('groups.members', $group));
 
-        $pivot = $group->members()->where('driver_id', 3)->firstOrFail()->pivot;
+        $pivot = $group->members()->where('driver_id', $umar->driver->id)->firstOrFail()->pivot;
 
         $this->assertSame(GroupRole::Organizer->value, $pivot->role);
     }
@@ -121,14 +124,15 @@ class GroupMemberManagementTest extends TestCase
     public function test_organizer_cannot_change_roles(): void
     {
         $user = $this->demoActor();
-        $organizer = User::findOrFail(2);
+        $organizer = User::where('email', 'drv2@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
+        $umar = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->actingAs($organizer)
-            ->patch(route('groups.members.role', [$group, 3]), ['role' => GroupRole::Admin->value])
+            ->patch(route('groups.members.role', [$group, $umar->driver->id]), ['role' => GroupRole::Admin->value])
             ->assertForbidden();
 
-        $pivot = $group->members()->where('driver_id', 3)->firstOrFail()->pivot;
+        $pivot = $group->members()->where('driver_id', $umar->driver->id)->firstOrFail()->pivot;
         $this->assertSame(GroupRole::Member->value, $pivot->role);
     }
 
@@ -174,12 +178,13 @@ class GroupMemberManagementTest extends TestCase
     {
         $user = $this->demoActor();
         $group = $this->kartingCrew();
+        $umar = User::where('email', 'drv3@karting.app')->firstOrFail();
 
         $this->actingAs($user)
-            ->delete(route('groups.members.destroy', [$group, 3]))
+            ->delete(route('groups.members.destroy', [$group, $umar->driver->id]))
             ->assertRedirect(route('groups.members', $group));
 
-        $this->assertFalse($group->members()->where('driver_id', 3)->exists());
+        $this->assertFalse($group->members()->where('driver_id', $umar->driver->id)->exists());
     }
 
     public function test_cannot_remove_last_admin(): void
@@ -198,13 +203,14 @@ class GroupMemberManagementTest extends TestCase
     public function test_plain_member_cannot_remove_member(): void
     {
         $this->demoActor();
-        $member = User::findOrFail(3);
+        $member = User::where('email', 'drv3@karting.app')->firstOrFail();
+        $arjun = User::where('email', 'drv4@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
 
         $this->actingAs($member)
-            ->delete(route('groups.members.destroy', [$group, 4]))
+            ->delete(route('groups.members.destroy', [$group, $arjun->driver->id]))
             ->assertForbidden();
 
-        $this->assertTrue($group->members()->where('driver_id', 4)->exists());
+        $this->assertTrue($group->members()->where('driver_id', $arjun->driver->id)->exists());
     }
 }

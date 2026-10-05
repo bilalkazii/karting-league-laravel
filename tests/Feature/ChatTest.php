@@ -21,7 +21,7 @@ class ChatTest extends TestCase
     {
         $this->seed();
 
-        return User::findOrFail(1);
+        return User::where('email', 'demo@karting.app')->firstOrFail();
     }
 
     private function kartingCrew(): Group
@@ -44,10 +44,10 @@ class ChatTest extends TestCase
 
     public function test_guest_is_redirected_from_all_chat_routes(): void
     {
-        $this->demoActor();
+        $user = $this->demoActor();
         $group = $this->kartingCrew();
-        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => 1]);
-        $message = ChatMessage::create(['group_id' => $group->id, 'sender_id' => 1, 'body' => 'Hey']);
+        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => $user->driver->id]);
+        $message = ChatMessage::create(['group_id' => $group->id, 'sender_id' => $user->driver->id, 'body' => 'Hey']);
 
         $this->get(route('chat'))->assertRedirect(route('login'));
         $this->get(route('chat.group', $group))->assertRedirect(route('login'));
@@ -156,7 +156,7 @@ class ChatTest extends TestCase
     {
         $user = $this->demoActor();
         $group = $this->kartingCrew();
-        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => 1]);
+        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => $user->driver->id]);
 
         $this->actingAs($user)
             ->get(route('chat.race', $race))
@@ -176,10 +176,10 @@ class ChatTest extends TestCase
 
     public function test_non_member_is_forbidden_from_race_thread(): void
     {
-        $this->demoActor();
+        $demo = $this->demoActor();
         [$stranger, $strangerDriver] = $this->userWithDriver();
         $group = $this->kartingCrew();
-        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => 1]);
+        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => $demo->driver->id]);
 
         $this->actingAs($stranger)
             ->get(route('chat.race', $race))
@@ -207,7 +207,7 @@ class ChatTest extends TestCase
     public function test_cannot_delete_another_drivers_message(): void
     {
         $this->demoActor();
-        $other = User::findOrFail(2);
+        $other = User::where('email', 'drv2@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
 
         $message = app(ChatService::class)->storeMessage($other->driver, 'Mine', $group);
@@ -223,7 +223,7 @@ class ChatTest extends TestCase
     public function test_group_read_watermark_drives_unread_count(): void
     {
         $demo = $this->demoActor();
-        $other = User::findOrFail(2);
+        $other = User::where('email', 'drv2@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
         $service = app(ChatService::class);
 
@@ -242,7 +242,7 @@ class ChatTest extends TestCase
     public function test_chat_index_lists_rooms_with_preview_and_unread(): void
     {
         $demo = $this->demoActor();
-        $other = User::findOrFail(2);
+        $other = User::where('email', 'drv2@karting.app')->firstOrFail();
         $group = $this->kartingCrew();
 
         app(ChatService::class)->storeMessage($other->driver, 'Practice start at dusk', $group);
@@ -257,21 +257,21 @@ class ChatTest extends TestCase
 
     public function test_service_rejects_message_without_a_thread(): void
     {
-        $this->demoActor();
+        $demo = $this->demoActor();
         $service = app(ChatService::class);
 
         $this->expectException(HttpException::class);
-        $service->storeMessage(User::findOrFail(1)->driver, 'No scope');
+        $service->storeMessage($demo->driver, 'No scope');
     }
 
     public function test_service_rejects_message_targeting_two_threads(): void
     {
-        $this->demoActor();
+        $demo = $this->demoActor();
         $service = app(ChatService::class);
         $group = $this->kartingCrew();
-        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => 1]);
+        $race = Race::factory()->create(['group_id' => $group->id, 'organizer_id' => $demo->driver->id]);
 
         $this->expectException(HttpException::class);
-        $service->storeMessage(User::findOrFail(1)->driver, 'Both scopes', $group, $race);
+        $service->storeMessage($demo->driver, 'Both scopes', $group, $race);
     }
 }
